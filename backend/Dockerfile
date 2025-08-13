@@ -2,15 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# Copy requirements and install Python dependencies
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Copy frontend build
+COPY frontend/build /app/frontend/build
 
-COPY . /app
+# Copy backend application
+COPY backend/app.py .
 
+# Expose port
 EXPOSE 8000
 
+# Start the application
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
-
