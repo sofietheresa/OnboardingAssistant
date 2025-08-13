@@ -46,8 +46,8 @@ pip install podman-compose
 
 ### 2. Projekt klonen
 ```bash
-git clone <repository-url>
-cd watsonx-chat-starter
+git clone https://github.com/sofietheresa/OnboardingAssistant.git
+cd OnboardingAssistant
 ```
 
 ### 3. Umgebungsvariablen konfigurieren
@@ -76,6 +76,12 @@ WATSONX_URL=https://us-south.ml.cloud.ibm.com
 ```bash
 # In WSL ausführen
 ./stop-podman-wsl.sh
+```
+
+### Anwendung neustarten
+```bash
+# In WSL ausführen
+./restart-podman-wsl.sh
 ```
 
 ### Von Windows aus starten
@@ -109,7 +115,7 @@ podman-compose -f podman-compose.yml restart
 ## 📁 Projektstruktur
 
 ```
-watsonx-chat-starter/
+OnboardingAssistant/
 ├── backend/                 # FastAPI Backend
 │   ├── app.py              # Hauptanwendung
 │   ├── static/             # Frontend-Dateien
@@ -119,6 +125,7 @@ watsonx-chat-starter/
 ├── podman-compose.yml      # Container-Orchestrierung
 ├── start-podman-wsl.sh     # Start-Skript (WSL)
 ├── stop-podman-wsl.sh      # Stopp-Skript (WSL)
+├── restart-podman-wsl.sh   # Neustart-Skript (WSL)
 ├── env.example             # Umgebungsvariablen-Vorlage
 └── README.md               # Diese Datei
 ```
@@ -156,4 +163,3 @@ Dieses Projekt ist für Bildungs- und Entwicklungszwecke gedacht.
 ## 🤝 Support
 
 Bei Fragen oder Problemen erstellen Sie ein Issue oder kontaktieren Sie das Entwicklungsteam.
-
