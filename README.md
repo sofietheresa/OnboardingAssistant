@@ -1,128 +1,163 @@
-# 🤖 Boardy - IBM Onboarding Assistant
+# 🚀 Boardy - IBM Onboarding Assistant
 
-Ein intelligenter Chat-Assistent für IBM-Standorte mit Watson X Integration.
-
-## ✨ Features
-
-- 🎯 **Location-spezifisches Onboarding** - Angepasst an IBM-Standorte
-- 🤖 **Watson X Integration** - Nutzt IBMs fortschrittliche KI-Modelle
-- 💻 **Desktop-optimiert** - Professionelles, responsives Design
-- 🐳 **Container-basiert** - Einfache Bereitstellung mit Podman
-
-## 🚀 Quick Start
-
-### 1. Voraussetzungen
-
-- **WSL2** mit Ubuntu
-- **Podman** und **podman-compose** in WSL
-- **Watson X API-Zugang**
-
-### 2. Installation
-
-```bash
-# Projekt klonen
-git clone https://github.com/sofietheresa/OnboardingAssistant.git
-cd OnboardingAssistant
-
-# Umgebungsvariablen konfigurieren
-cp env.example .env
-# Bearbeiten Sie .env mit Ihren Watson X Credentials
-```
-
-### 3. Anwendung starten
-
-```cmd
-# Windows - Einfach doppelklicken oder ausführen:
-run.bat
-```
-
-Das war's! 🎉
+Ein intelligenter Chatbot-Assistent für das IBM Onboarding, der Mitarbeitern hilft, sich an verschiedenen Standorten zurechtzufinden.
 
 ## 📁 Projektstruktur
 
 ```
-boardy-onboarding-assistant/
-├── backend/                    # FastAPI Backend
+watsonx-chat-starter/
+├── 📁 backend/                 # Python Flask Backend
+│   ├── 📁 models/             # Datenmodelle
+│   ├── 📁 routes/             # API-Routen
 │   ├── app.py                 # Hauptanwendung
-│   ├── requirements.txt       # Python Dependencies
-│   └── Dockerfile            # Container Definition
-├── frontend/                  # Frontend (fertig gebaut)
-│   └── build/                # Produktive HTML/CSS/JS Dateien
-├── litellm-config.yaml       # Watson X Konfiguration
-├── podman-compose.yml        # Container Orchestrierung
-├── run.bat                   # Start/Restart Script
-├── env.example              # Umgebungsvariablen Vorlage
-└── README.md               # Diese Datei
+│   ├── Dockerfile             # Container-Konfiguration
+│   └── requirements.txt       # Python-Abhängigkeiten
+├── 📁 frontend/               # React TypeScript Frontend
+│   ├── 📁 src/
+│   │   ├── 📁 components/     # React-Komponenten
+│   │   ├── 📁 types/          # TypeScript-Typen
+│   │   ├── 📁 hooks/          # Custom React Hooks
+│   │   ├── 📁 utils/          # Hilfsfunktionen
+│   │   ├── App.tsx            # Hauptkomponente
+│   │   ├── main.tsx           # Einstiegspunkt
+│   │   └── styles.css         # Styling
+│   ├── 📁 public/             # Statische Assets
+│   ├── package.json           # Node.js-Abhängigkeiten
+│   └── vite.config.ts         # Vite-Konfiguration
+├── 📁 scripts/                # Start-Skripte
+│   ├── start-dev.bat          # Entwicklung starten
+│   └── start-prod.bat         # Produktion starten
+├── 📁 docs/                   # Dokumentation
+├── 📁 tests/                  # Test-Dateien
+├── podman-compose.yml         # Container-Orchestrierung
+├── litellm-config.yaml        # LiteLLM-Konfiguration
+└── README.md                  # Diese Datei
 ```
 
-## ⚙️ Konfiguration
+## 🚀 Schnellstart
 
-Erstellen Sie eine `.env` Datei mit Ihren Watson X Credentials:
+### Voraussetzungen
+- [Podman](https://podman.io/) installiert
+- [Node.js](https://nodejs.org/) (Version 18+)
+- [WSL2](https://docs.microsoft.com/en-us/windows/wsl/) (Windows)
 
-```env
-WATSONX_API_KEY=your_actual_api_key
-WATSONX_PROJECT_ID=your_actual_project_id
+### 1. Repository klonen
+```bash
+git clone <repository-url>
+cd watsonx-chat-starter
+```
+
+### 2. Umgebungsvariablen konfigurieren
+```bash
+# env.example zu .env kopieren
+cp env.example .env
+
+# .env mit deinen Watson X Credentials bearbeiten
+WATSONX_API_KEY=your_api_key
+WATSONX_PROJECT_ID=your_project_id
 WATSONX_URL=https://us-south.ml.cloud.ibm.com
+```
+
+### 3. Frontend-Abhängigkeiten installieren
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 4. Anwendung starten
+
+#### Entwicklung (mit Hot Reload)
+```bash
+# Windows
+scripts\start-dev.bat
+
+# Oder manuell:
+# Terminal 1: Backend starten
+podman-compose up --build
+
+# Terminal 2: Frontend starten
+cd frontend && npm run dev
+```
+
+#### Produktion
+```bash
+# Windows
+scripts\start-prod.bat
 ```
 
 ## 🌐 Zugriff
 
-Nach dem Start ist die Anwendung verfügbar unter:
+- **Entwicklung**: http://localhost:5173 (Frontend) + http://localhost:8000 (Backend)
+- **Produktion**: http://localhost:8000 (alles über Backend)
 
-- **Frontend**: http://localhost:8000
-- **API**: http://localhost:8000/api/chat
-- **Health Check**: http://localhost:8000/healthz
+## 🛠️ Entwicklung
 
-## 🤖 Verfügbare KI-Modelle
+### Frontend
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite (schnell, Hot Reload)
+- **Styling**: CSS mit CSS-Variablen
+- **Struktur**: Komponenten-basiert mit getrennten Types
 
-- **llama-3-8b** - Meta Llama 3 8B (Standard)
-- **llama-3-70b** - Meta Llama 3 70B
-- **granite-8b** - IBM Granite 3 8B
-- **mistral-large** - Mistral Large
-- **mixtral** - Mixtral 8x7B
+### Backend
+- **Framework**: Flask (Python)
+- **AI**: LiteLLM + Watson X
+- **Container**: Podman + Docker Compose
 
-## 🎯 Standorte
+### Hot Reload
+Das Frontend lädt automatisch neu, wenn du Dateien änderst. Keine manuellen Browser-Refreshs nötig!
 
-- **IBM Böblingen** - Innovationszentrum für Cloud & AI
-- **IBM München** - Enterprise Solutions & Consulting  
-- **UDG Ludwigsburg** - Digital Business & Transformation
+## 📝 Features
 
-## 🔧 Verwaltung
+- 🎯 **Standortauswahl**: IBM Böblingen, München, UDG Ludwigsburg
+- 💬 **Intelligenter Chat**: Watson X Integration
+- 🎨 **Moderne UI**: Responsive Design
+- 🔄 **Hot Reload**: Sofortige Änderungen sichtbar
+- 🐳 **Containerisiert**: Einfache Bereitstellung
+
+## 🧪 Tests
 
 ```bash
-# Container Status prüfen
-wsl --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose ps"
+# Frontend Tests (wenn implementiert)
+cd frontend
+npm test
 
-# Logs anzeigen
-wsl --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose logs -f"
-
-# Anwendung stoppen
-wsl --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose down"
+# Backend Tests (wenn implementiert)
+cd backend
+python -m pytest
 ```
 
-## 🐛 Troubleshooting
+## 📦 Deployment
 
-### Container starten nicht
+### Lokale Produktion
 ```bash
-# Podman Status prüfen
-wsl --exec podman info
-
-# Logs prüfen
-wsl --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose logs"
+scripts\start-prod.bat
 ```
 
-### API-Fehler
-- Überprüfen Sie Ihre Watson X Credentials in `.env`
-- Stellen Sie sicher, dass Ihr Watson X Projekt aktiv ist
+### Cloud Deployment
+1. Frontend builden: `cd frontend && npm run build`
+2. Container pushen: `podman-compose push`
+3. Auf Ziel-Server deployen
 
-### Port-Konflikte
-- Standard-Ports: 8000 (Frontend/API), 4000 (LiteLLM)
-- Bei Konflikten ändern Sie die Ports in `podman-compose.yml`
+## 🤝 Beitragen
 
-## 📝 Lizenz
+1. Fork erstellen
+2. Feature-Branch: `git checkout -b feature/amazing-feature`
+3. Commits: `git commit -m 'Add amazing feature'`
+4. Push: `git push origin feature/amazing-feature`
+5. Pull Request erstellen
 
-Dieses Projekt ist für Bildungs- und Entwicklungszwecke gedacht.
+## 📄 Lizenz
 
-## 🤝 Support
+Dieses Projekt ist Teil des IBM Onboarding-Programms.
 
-Bei Fragen oder Problemen erstellen Sie ein Issue im Repository.
+## 🆘 Support
+
+Bei Problemen:
+1. Issues auf GitHub erstellen
+2. Logs überprüfen: `podman-compose logs`
+3. Frontend-Logs im Browser-DevTools
+
+---
+
+**Entwickelt mit ❤️ für IBM Mitarbeiter**

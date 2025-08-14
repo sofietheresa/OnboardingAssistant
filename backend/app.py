@@ -3,6 +3,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -10,10 +11,27 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Boardy Onboarding Assistant API")
 
+# CORS for local dev and container access
+cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:8000,https://localhost:5173")
+allowed_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins or ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Serve React frontend
 frontend_path = Path("/app/frontend/build")
 if frontend_path.exists():
-    app.mount("/static", StaticFiles(directory=str(frontend_path / "static")), name="static")
+    # Mount only directories that actually exist
+    assets_dir = frontend_path / "assets"
+    static_dir = frontend_path / "static"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 class ChatRequest(BaseModel):
     message: str
@@ -25,6 +43,11 @@ class ChatResponse(BaseModel):
     model: str
     location: str
 
+class Location(BaseModel):
+    id: str
+    name: str
+    description: str
+
 @app.get("/healthz")
 async def health_check():
     """Health check endpoint"""
@@ -35,12 +58,22 @@ async def api_health():
     """API health check"""
     return {"status": "healthy", "api": "Boardy API"}
 
+@app.get("/api/locations", response_model=list[Location])
+async def list_locations():
+    """Return available onboarding locations for the UI."""
+    return [
+        Location(id="boeblingen", name="IBM Böblingen", description="Entwicklungs- und Innovationszentrum."),
+        Location(id="muenchen", name="IBM München", description="Client Center und Lab Standorte."),
+        Location(id="ludwigsburg", name="UDG Ludwigsburg", description="Digitalagentur im IBM iX Netzwerk."),
+    ]
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Chat endpoint that forwards messages to LiteLLM"""
     try:
         # Get LiteLLM URL from environment
         litellm_url = os.getenv("LITELLM_URL", "http://localhost:4000")
+        default_model = os.getenv("DEFAULT_MODEL", request.model or "llama-3-8b")
         
         # Prepare the message with location context
         system_message = f"""Du bist Boardy, ein freundlicher Onboarding-Assistent für IBM-Standorte. 
@@ -54,7 +87,7 @@ async def chat(request: ChatRequest):
             response = await client.post(
                 f"{litellm_url}/chat/completions",
                 json={
-                    "model": request.model,
+                    "model": default_model,
                     "messages": [
                         {"role": "system", "content": system_message},
                         {"role": "user", "content": request.message}
@@ -70,7 +103,7 @@ async def chat(request: ChatRequest):
                 
                 return ChatResponse(
                     response=assistant_message,
-                    model=request.model,
+                    model=default_model,
                     location=request.location
                 )
             else:
@@ -79,7 +112,12 @@ async def chat(request: ChatRequest):
     except httpx.RequestError as e:
         raise HTTPException(status_code=503, detail=f"LiteLLM service unavailable: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        # Fallback: return a graceful message so UI can continue in dev
+        return ChatResponse(
+            response=f"(Lokaler Fallback) Ich habe deine Nachricht erhalten: '{request.message}'. Der LLM-Dienst ist aktuell nicht verfügbar.",
+            model=default_model if 'default_model' in locals() else request.model,
+            location=request.location,
+        )
 
 @app.get("/")
 async def serve_frontend():

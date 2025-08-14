@@ -24,27 +24,45 @@ if not exist ".env" (
 echo [INFO] Stopping any running containers...
 wsl --distribution Ubuntu --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose down" 2>nul
 
-echo [INFO] Starting Boardy application...
+echo [INFO] Starting Backend services...
 echo.
 
+REM Start backend services
 wsl --distribution Ubuntu --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose up --build -d"
 
 if %errorlevel% equ 0 (
     echo.
     echo ================================
-    echo   SUCCESS: Boardy is running!   
+    echo   SUCCESS: Backend is running!   
+    echo ================================
+    echo.
+    echo Starting Frontend development server...
+    echo.
+    
+    REM Start frontend development server in a new window
+    start "Frontend Dev Server" cmd /k "cd /d %~dp0frontend && npm run dev"
+    
+    REM Wait a moment for the server to start
+    timeout /t 3 /nobreak >nul
+    
+    echo.
+    echo ================================
+    echo   SUCCESS: All services running!   
     echo ================================
     echo.
     echo Access the application:
-    echo   Frontend: http://localhost:8000
+    echo   Frontend: http://localhost:5173 (Vite dev server - HOT RELOAD!)
+    echo   Backend:  http://localhost:8000
     echo   API:      http://localhost:8000/api/chat
     echo.
-    echo Press any key to open in browser...
+    echo The frontend will automatically reload when you make changes!
+    echo.
+    echo Press any key to open frontend in browser...
     pause >nul
-    start http://localhost:8000
+    start http://localhost:5173
 ) else (
     echo.
-    echo [ERROR] Failed to start application!
+    echo [ERROR] Failed to start backend!
     echo Check the error messages above.
     pause
 )
