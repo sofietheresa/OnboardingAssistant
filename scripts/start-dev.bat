@@ -1,11 +1,11 @@
 @echo off
 REM Boardy - IBM Onboarding Assistant
-REM Start/Restart Script
+REM Development Startup Script
 
 echo.
-echo ================================
-echo   Boardy Onboarding Assistant   
-echo ================================
+echo ========================================
+echo   Boardy Onboarding Assistant - DEV   
+echo ========================================
 echo.
 
 REM Check if .env file exists
@@ -32,23 +32,23 @@ wsl --distribution Ubuntu --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/
 
 if %errorlevel% equ 0 (
     echo.
-    echo ================================
+    echo ========================================
     echo   SUCCESS: Backend is running!   
-    echo ================================
+    echo ========================================
     echo.
     echo Starting Frontend development server...
     echo.
     
     REM Start frontend development server in a new window
-    start "Frontend Dev Server" cmd /k "cd /d %~dp0frontend && npm run dev"
+    start "Frontend Dev Server" cmd /k "cd /d %~dp0..\frontend && npm run dev"
     
     REM Wait a moment for the server to start
     timeout /t 3 /nobreak >nul
     
     echo.
-    echo ================================
+    echo ========================================
     echo   SUCCESS: All services running!   
-    echo ================================
+    echo ========================================
     echo.
     echo Access the application:
     echo   Frontend: http://localhost:5173 (Vite dev server - HOT RELOAD!)

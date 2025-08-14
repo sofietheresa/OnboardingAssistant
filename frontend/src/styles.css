@@ -27,9 +27,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
 .subtitle { position: absolute; width: 277px; height: 79px; left: 58px; top: 136px; font-weight: 400; font-size: 24px; line-height: 33px; text-align: center; color: #FFFFFF; }
 .choose { position: absolute; width: 277px; height: 56px; left: 55px; top: 532px; font-weight: 600; font-size: 24px; line-height: 33px; text-align: center; color: #FFFFFF; }
 
-.bubble { position: absolute; left: 62px; top: 210px; width: 268px; height: 268px; background: #e5eef9; border-radius: 50%; }
-.bubble:before { content: ""; position: absolute; left: -22px; top: 28px; width: 0; height: 0; border-top: 16px solid transparent; border-bottom: 16px solid transparent; border-right: 24px solid #e5eef9; }
-.bubble-img, .bubble-fallback { position: absolute; left: 0; top: 210px; width: 268px; height: 268px; border-radius: 50%; object-fit: contain; }
+.bubble { position: absolute; left: 62px; top: 210px; width: 268px; height: 268px; background: transparent; }
+.bubble-img, .bubble-fallback { position: absolute; left: 0; top: 0; width: 268px; height: 268px; object-fit: contain; }
 .bubble-fallback { background: radial-gradient(60% 60% at 40% 40%, #e9eef7 0%, #c9d7ec 60%, #97a9c7 100%); }
 
 .btn-outline-1, .btn-outline-2, .btn-outline-3 { box-sizing: border-box; position: absolute; width: 313px; height: 63px; background: #000000; border: 7px solid #000000; border-radius: 200px; }
@@ -74,16 +73,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
   }
 }
 
-/* Two-column layout for larger screens */
-.onboarding-layout {
-  width: 100%;
-  max-width: 1100px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-}
+
 
 .onboarding-hero {
   display: flex;

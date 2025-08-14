@@ -13,11 +13,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onChooseLocation })
 
         {/* Sprechblase mit Bild */}
         <div className="bubble">
-          {imageFailed ? (
-            <div className="bubble-fallback" aria-hidden="true" />
-          ) : (
             <img src="/boardy.svg" alt="Boardy" className="bubble-img" onError={() => setImageFailed(true)} />
-          )}
+          
         </div>
 
         <div className="btn-outline-1"></div>
