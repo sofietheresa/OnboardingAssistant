@@ -34,27 +34,19 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     }
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('de-DE', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
-
   return (
     <div className="chat-screen">
+      {/* Header mit blauem Hintergrund */}
       <div className="chat-header">
-        <div className="chat-header-left">
-          <button className="back-button" onClick={onBackToOnboarding}>
-            ← Zurück
-          </button>
-          <div className="location-info">
-            <h2>{location.name}</h2>
-            <p>{location.description}</p>
-          </div>
+        <button className="back-button" onClick={onBackToOnboarding}>
+          <div className="arrow"></div>
+        </button>
+        <div className="location-title">
+          {location.name}
         </div>
       </div>
 
+      {/* Chat-Nachrichten */}
       <div className="chat-messages">
         {messages.map((message) => (
           <div
@@ -63,21 +55,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           >
             <div className="message-content">
               {message.text}
-              <div style={{ 
-                fontSize: '0.8rem', 
-                opacity: 0.7, 
-                marginTop: '5px',
-                textAlign: message.isUser ? 'right' : 'left'
-              }}>
-                {formatTime(message.timestamp)}
-              </div>
             </div>
           </div>
         ))}
         
         {isLoading && (
           <div className="loading-indicator">
-            <div className="spinner"></div>
             Boardy schreibt...
           </div>
         )}
@@ -85,26 +68,39 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Eingabefeld */}
       <form className="chat-input" onSubmit={handleSubmit}>
         <div className="input-container">
+          <button type="button" className="plus-button" aria-label="Anhang hinzufügen">
+            {/* Plus-Zeichen wird durch CSS hinzugefügt */}
+          </button>
+          
           <input
             type="text"
             className="message-input"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Schreiben Sie eine Nachricht..."
+            placeholder="Frag etwas!"
             disabled={isLoading}
           />
+          
           <button
             type="submit"
             className="send-button"
             disabled={!inputText.trim() || isLoading}
+            aria-label="Nachricht senden"
           >
-            Senden
+            {/* Senden-Icon wird durch CSS hinzugefügt */}
           </button>
         </div>
       </form>
+
+      {/* Gelbe Akzente */}
+      <div className="yellow-accent"></div>
+      <div className="yellow-accent"></div>
+      <div className="yellow-accent"></div>
+      <div className="yellow-accent"></div>
     </div>
   );
 };

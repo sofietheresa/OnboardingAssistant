@@ -137,100 +137,270 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
   box-shadow: 0 6px 0 #0a0a0a, 0 12px 22px rgba(0,0,0,0.45);
 }
 
-/* Chat screen */
+/* Chat screen - Exakte Design-Spezifikationen */
 .chat-screen {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  position: relative;
+  width: 393px;
+  height: 852px;
+  background: #FFFFFF;
+  margin: 0 auto;
 }
 
+/* Header mit blauem Hintergrund */
 .chat-header {
+  position: absolute;
+  width: 393px;
+  height: 79px;
+  left: 0px;
+  top: -8px;
+  background: #1C3458;
+  border-radius: 10px;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  padding: 0 20px;
+  box-sizing: border-box;
 }
 
-.chat-header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
+/* Zurück-Button (Group 8) */
 .back-button {
+  position: relative;
+  width: 55.71px;
+  height: 39px;
   background: transparent;
-  color: var(--text);
-  border: 1px solid rgba(255,255,255,0.3);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border: none;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.location-info h2 {
+/* Zurück-Button Rechteck */
+.back-button::before {
+  content: "";
+  position: absolute;
+  width: 49.1px;
+  height: 39px;
+  left: 3.36px;
+  top: 0px;
+  background: #FFFFFF;
+  border: 1px solid #11274D;
+  border-radius: 16px;
+}
+
+/* Zurück-Button inneres Rechteck */
+.back-button::after {
+  content: "";
+  position: absolute;
+  width: 42.37px;
+  height: 31.14px;
+  left: 6.73px;
+  top: 3.93px;
+  background: #1C3458;
+  border: 1px solid #102649;
+  border-radius: 13px;
+}
+
+/* Zurück-Pfeil */
+.back-button .arrow {
+  position: absolute;
+  width: 21px;
+  height: 0px;
+  left: 20px;
+  top: 19px;
+  border: 2px solid #FEFA00;
+  transform: rotate(180deg);
+}
+
+/* Standort-Titel */
+.location-title {
+  position: absolute;
+  width: 146px;
+  height: 34px;
+  right: 20px;
+  top: 23px;
+  font-family: 'Open Sans', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  text-align: right;
+  color: #FFFFFF;
+}
+
+/* Chat-Nachrichten Container */
+.chat-messages {
+  position: absolute;
+  width: 266.51px;
+  height: 55px;
+  left: 21px;
+  top: 142px;
+  background: #E2F1FD;
+  border-radius: 10px;
+  padding: 12px 20px;
+  box-sizing: border-box;
+}
+
+/* Nachrichten-Text */
+.message-content {
+  font-family: 'Open Sans', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 27px;
+  color: #11274D;
   margin: 0;
 }
 
-.chat-messages {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.message {
-  display: flex;
-}
-
-.message.assistant .message-content {
-  background: rgba(255,255,255,0.06);
-  align-self: flex-start;
-}
-
-.message.user {
-  justify-content: flex-end;
-}
-
-.message-content {
-  max-width: 70ch;
-  padding: 12px 14px;
-  border-radius: 12px;
-  line-height: 1.4;
-}
-
+/* Eingabefeld Container */
 .chat-input {
-  padding: 12px 16px 18px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  position: absolute;
+  width: 328px;
+  height: 95px;
+  left: 65px;
+  top: 777px;
+  background: #9DC3E2;
+  border-radius: 10px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
+/* Eingabefeld */
 .input-container {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 15px;
 }
 
+/* Plus-Button (Ellipse 16) */
+.plus-button {
+  position: relative;
+  width: 45px;
+  height: 45px;
+  background: #9DC3E2;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plus-button::after {
+  content: "+";
+  font-family: 'Open Sans', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 54px;
+  color: #11274D;
+}
+
+/* Eingabefeld Text */
 .message-input {
   flex: 1;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(0,0,0,0.2);
-  color: var(--text);
-  border-radius: 10px;
-  padding: 12px 12px;
-  font-size: 16px;
+  background: transparent;
+  border: none;
+  font-family: 'Open Sans', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 27px;
+  color: #11274D;
+  outline: none;
 }
 
+.message-input::placeholder {
+  color: #11274D;
+  opacity: 0.7;
+}
+
+/* Senden-Button (Ellipse 17) */
 .send-button {
+  position: relative;
+  width: 45px;
+  height: 45px;
+  background: #11274D;
   border: none;
-  background: #20c997;
-  color: #06241c;
-  border-radius: 10px;
-  padding: 12px 16px;
-  font-weight: 700;
+  border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Senden-Button Icon (Group 9) */
+.send-button::before {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 35px;
+  background: transparent;
+}
+
+/* Senden-Button Rechteck 1 */
+.send-button .rect1 {
+  position: absolute;
+  width: 16px;
+  height: 21px;
+  left: 3px;
+  top: 0px;
+  border: 2px solid #11274D;
+  border-radius: 30px;
+}
+
+/* Senden-Button Rechteck 2 */
+.send-button .rect2 {
+  position: absolute;
+  width: 22px;
+  height: 12px;
+  left: 0px;
+  top: 12px;
+  border: 2px solid #11274D;
+  border-radius: 17px;
+}
+
+/* Senden-Button Polygon */
+.send-button .polygon {
+  position: absolute;
+  width: 20px;
+  height: 9px;
+  left: 1px;
+  top: 26px;
+  border: 2px solid #11274D;
+  border-radius: 1px;
+}
+
+/* Gelbe Akzente */
+.yellow-accent {
+  position: absolute;
+  width: 4px;
+  height: 12px;
+  background: #FEFA00;
+  border-radius: 3px;
+}
+
+.yellow-accent:nth-child(1) {
+  left: 348px;
+  top: 814px;
+}
+
+.yellow-accent:nth-child(2) {
+  left: 355px;
+  top: 806px;
+  height: 28px;
+}
+
+.yellow-accent:nth-child(3) {
+  left: 362px;
+  top: 809px;
+  height: 22px;
+}
+
+.yellow-accent:nth-child(4) {
+  left: 369px;
+  top: 812px;
+  height: 16px;
 }
 
 .loading-indicator {
