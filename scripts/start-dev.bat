@@ -22,15 +22,24 @@ if not exist ".env" (
 )
 
 echo [INFO] Stopping any running containers...
-wsl --distribution Ubuntu --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose down" 2>nul
+pushd %~dp0..
+set "WSL_PATH=%cd:C:=/mnt/c%"
+set "WSL_PATH=%WSL_PATH:\=/%"
+wsl --distribution Ubuntu --exec bash -c "cd '%WSL_PATH%' && podman-compose down" 2>nul
+popd
 
 echo [INFO] Starting Backend services...
 echo.
 
 REM Start backend services
-wsl --distribution Ubuntu --exec bash -c "cd /mnt/c/Users/SofiePischl/Documents/01_HdM/watsonx-chat-starter && podman-compose up --build -d"
+pushd %~dp0..
+set "WSL_PATH=%cd:C:=/mnt/c%"
+set "WSL_PATH=%WSL_PATH:\=/%"
+wsl --distribution Ubuntu --exec bash -c "cd '%WSL_PATH%' && podman-compose up --build -d"
+set "BACKEND_EXIT_CODE=%errorlevel%"
+popd
 
-if %errorlevel% equ 0 (
+if %BACKEND_EXIT_CODE% equ 0 (
     echo.
     echo ========================================
     echo   SUCCESS: Backend is running!   
@@ -39,8 +48,9 @@ if %errorlevel% equ 0 (
     echo Starting Frontend development server...
     echo.
     
-    REM Start frontend development server in a new window
-    start "Frontend Dev Server" cmd /k "cd /d %~dp0..\frontend && npm run dev"
+    REM Start frontend development server in background
+    cd /d %~dp0..\frontend
+    start /b npm run dev
     
     REM Wait a moment for the server to start
     timeout /t 3 /nobreak >nul
@@ -57,12 +67,4 @@ if %errorlevel% equ 0 (
     echo.
     echo The frontend will automatically reload when you make changes!
     echo.
-    echo Press any key to open frontend in browser...
-    pause >nul
-    start http://localhost:5173
-) else (
-    echo.
-    echo [ERROR] Failed to start backend!
-    echo Check the error messages above.
-    pause
-)
+

@@ -1,6 +1,6 @@
 FROM node:20-slim AS frontend-build
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/tsconfig.json frontend/vite.config.ts ./
+COPY frontend/package.json frontend/package-lock.json frontend/tsconfig.json frontend/vite.config.ts ./
 COPY frontend/index.html ./index.html
 COPY frontend/src ./src
 COPY frontend/public ./public

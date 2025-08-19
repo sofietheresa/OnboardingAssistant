@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { OnboardingScreenProps } from '../types';
+import '../styles/OnboardingScreen.css';
 
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onChooseLocation }) => {
   const [imageFailed, setImageFailed] = useState(false);

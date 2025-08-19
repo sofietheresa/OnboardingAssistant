@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import ChatScreen from './components/ChatScreen';
 import OnboardingScreen from './components/OnboardingScreen';
-import { Location, Message } from './types';
+import { Location, Message, FileAttachment, AudioAttachment } from './types';
+import './styles.css';
 
 const LOCATIONS: Location[] = [
   { id: 'boeblingen', name: 'IBM Böblingen', description: 'Entwicklungs- und Innovationszentrum.' },
@@ -44,20 +45,57 @@ const App: React.FC = () => {
     setMessages([]);
   };
 
-  const handleSendMessage = (text: string) => {
-    setMessages((prev) => [...prev, { id: crypto.randomUUID(), text, isUser: true, timestamp: new Date() }]);
+  const handleSendMessage = (text: string, fileAttachment?: FileAttachment, audioAttachment?: AudioAttachment) => {
+    const newMessage: Message = {
+      id: crypto.randomUUID(),
+      text,
+      isUser: true,
+      timestamp: new Date(),
+      fileAttachment,
+      audioAttachment
+    };
+    
+    setMessages((prev) => [...prev, newMessage]);
+    
+    // Create FormData for file uploads
+    const formData = new FormData();
+    formData.append('message', text);
+    formData.append('location', selectedLocation?.name ?? '');
+    
+    if (fileAttachment) {
+      formData.append('hasFile', 'true');
+      formData.append('fileName', fileAttachment.name);
+      formData.append('fileType', fileAttachment.type);
+      // In a real implementation, you would append the actual file here
+    }
+    
+    if (audioAttachment) {
+      formData.append('hasAudio', 'true');
+      formData.append('audioDuration', audioAttachment.duration.toString());
+      // In a real implementation, you would append the actual audio blob here
+    }
+    
     // Send to backend (non-blocking, append response when returned)
     fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, location: selectedLocation?.name ?? '' })
+      body: formData
     })
       .then((r) => r.json())
       .then((data) => {
-        setMessages((prev) => [...prev, { id: crypto.randomUUID(), text: data.response, isUser: false, timestamp: new Date() }]);
+        setMessages((prev) => [...prev, { 
+          id: crypto.randomUUID(), 
+          text: data.response, 
+          isUser: false, 
+          timestamp: new Date() 
+        }]);
       })
       .catch(() => {
-        setMessages((prev) => [...prev, { id: crypto.randomUUID(), text: '(Fehler) Keine Antwort vom Server.', isUser: false, timestamp: new Date() }]);
+        setMessages((prev) => [...prev, { 
+          id: crypto.randomUUID(), 
+          text: '(Fehler) Keine Antwort vom Server.', 
+          isUser: false, 
+          timestamp: new Date() 
+        }]);
       });
   };
 
@@ -71,13 +109,15 @@ const App: React.FC = () => {
   }
 
   return (
-    <ChatScreen
-      location={selectedLocation}
-      messages={messages}
-      onSendMessage={handleSendMessage}
-      onBackToOnboarding={handleBackToOnboarding}
-      isLoading={isLoading}
-    />
+    <div className="app-shell">
+      <ChatScreen
+        location={selectedLocation}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        onBackToOnboarding={handleBackToOnboarding}
+        isLoading={isLoading}
+      />
+    </div>
   );
 };
 
