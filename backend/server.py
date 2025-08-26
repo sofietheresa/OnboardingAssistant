@@ -9,8 +9,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # RAG-Module
-from schemas import AskRequest, AskResponse
-from rag import answer as rag_answer
+from app.schemas import AskRequest, AskResponse
+from app.rag import answer as rag_answer
 
 app = FastAPI(title="Boardy Onboarding Assistant API")
 

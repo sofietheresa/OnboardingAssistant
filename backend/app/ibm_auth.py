@@ -3,8 +3,13 @@ import os, time, httpx
 
 class IAMTokenManager:
     def __init__(self):
-        self.api_key = os.environ["qU2q8uBD8cO4Gc1llEXQu86YMGOg7fPSV6-_VVJOlxvD"]
-        self.iam_url = os.environ.get("IBM_IAM_URL", "https://iam.cloud.ibm.com/identity/token")
+        self.api_key = os.environ.get("WATSONX_API_KEY")
+        if not self.api_key:
+            raise RuntimeError("WATSONX_API_KEY ist nicht gesetzt (ENV).")
+
+        self.iam_url = os.environ.get(
+            "IBM_IAM_URL", "https://iam.cloud.ibm.com/identity/token"
+        )
         self._token = None
         self._exp = 0
 

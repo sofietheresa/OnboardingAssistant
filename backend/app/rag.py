@@ -1,4 +1,5 @@
 from typing import List, Dict
+from pgvector import Vector
 from .embeddings import WatsonxAIEmbeddings
 from .llm import WatsonxAILLM
 from .db import get_conn
@@ -29,12 +30,9 @@ def format_prompt(question: str, contexts: List[Dict]) -> str:
     )
 
 async def retrieve(query: str, k: int = 6) -> List[Dict]:
-    """
-    1) Embedding der Frage
-    2) Ähnlichkeitssuche in Postgres/pgvector
-    """
     embedder = WatsonxAIEmbeddings()
-    q_vec = (await embedder.embed([query]))[0]
+    q_raw = (await embedder.embed([query]))[0]  # -> List[float]
+    q_vec = Vector(q_raw)                       # ← WICHTIG: in pgvector.Vector wandeln
 
     sql = """
     SELECT id, doc_id, chunk_id, content, metadata
