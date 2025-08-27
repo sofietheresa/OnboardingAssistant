@@ -25,7 +25,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() || selectedFile) {
-      onSendMessage(inputValue.trim(), selectedFile);
+      // Convert File to FileAttachment if file is selected
+      const fileAttachment = selectedFile ? {
+        name: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type,
+        url: URL.createObjectURL(selectedFile)
+      } : undefined;
+      
+      onSendMessage(inputValue.trim(), fileAttachment);
       setInputValue('');
       setSelectedFile(null);
       if (fileInputRef.current) {
@@ -126,7 +134,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           </button>
 
           {/* Light blue input background container */}
-          <div className="input-background">
+          <div className={`input-background ${selectedFile ? 'has-document' : ''}`}>
             {/* Hidden File Input */}
             <input 
               type="file" 
@@ -138,21 +146,39 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
             {/* Text Input Form */}
             <form onSubmit={handleSubmit} className="chat-input-form">
-              {selectedFile ? (
-                <div className="selected-file-badge">
-                  <span>{selectedFile.name}</span>
-                  <button type="button" onClick={handleRemoveFile} className="remove-file-button">×</button>
-                </div>
-              ) : (
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Frag etwas!"
-                  className="message-input"
-                />
-              )}
+              <textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Frag etwas!"
+                className="message-input"
+                rows={1}
+                onInput={(e) => {
+                  // Automatische Höhenanpassung
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+                }}
+              />
             </form>
+
+            {/* Selected File Display - Bottom Left */}
+            {selectedFile && (
+              <div className="selected-file-display">
+                <div className="file-info">
+                  <span className="file-name" title={selectedFile.name}>
+                    {selectedFile.name}
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={handleRemoveFile} 
+                    className="remove-file-x"
+                    aria-label="Dokument entfernen"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Conditional buttons based on input */}
             {inputValue.trim() ? (
