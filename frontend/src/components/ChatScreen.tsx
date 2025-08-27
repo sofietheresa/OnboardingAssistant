@@ -11,8 +11,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,9 +26,54 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  // Cleanup function for MediaRecorder
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, [isRecording]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        setAudioBlob(audioBlob);
+        setIsRecording(false);
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Mikrofon konnte nicht aktiviert werden. Bitte überprüfen Sie die Berechtigungen.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim() || selectedFile) {
+    if (inputValue.trim() || selectedFile || audioBlob) {
       // Convert File to FileAttachment if file is selected
       const fileAttachment = selectedFile ? {
         name: selectedFile.name,
@@ -32,10 +81,22 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
         type: selectedFile.type,
         url: URL.createObjectURL(selectedFile)
       } : undefined;
+
+      // Convert AudioBlob to FileAttachment if audio is recorded
+      const audioAttachment = audioBlob ? {
+        name: 'Sprachaufnahme.wav',
+        size: audioBlob.size,
+        type: audioBlob.type,
+        url: URL.createObjectURL(audioBlob)
+      } : undefined;
       
-      onSendMessage(inputValue.trim(), fileAttachment);
+      // Send message with text or just the attachment
+      const messageText = inputValue.trim() || (audioBlob ? '🎤 Sprachaufnahme gesendet' : '');
+      onSendMessage(messageText, fileAttachment || audioAttachment);
+      
       setInputValue('');
       setSelectedFile(null);
+      setAudioBlob(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -60,9 +121,16 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     }
   };
 
+  const handleRemoveAudio = () => {
+    setAudioBlob(null);
+  };
+
   const handleVoiceClick = () => {
-    // TODO: Implement voice recording functionality
-    console.log('Voice button clicked');
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   };
 
   return (
@@ -134,7 +202,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           </button>
 
           {/* Light blue input background container */}
-          <div className={`input-background ${selectedFile ? 'has-document' : ''}`}>
+          <div className={`input-background ${selectedFile || audioBlob ? 'has-document' : ''}`}>
             {/* Hidden File Input */}
             <input 
               type="file" 
@@ -180,8 +248,27 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
               </div>
             )}
 
+            {/* Audio Recording Display - Bottom Left */}
+            {audioBlob && (
+              <div className="selected-file-display audio-display">
+                <div className="file-info">
+                  <span className="file-name" title="Sprachaufnahme">
+                    🎤 Sprachaufnahme
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={handleRemoveAudio} 
+                    className="remove-file-x"
+                    aria-label="Sprachaufnahme entfernen"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Conditional buttons based on input */}
-            {inputValue.trim() ? (
+            {inputValue.trim() || selectedFile || audioBlob ? (
               /* Send Button - Arrow pointing up */
               <button className="send-button" onClick={handleSubmit}>
                 <div className="send-arrow">↑</div>
@@ -189,15 +276,19 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
             ) : (
               <>
                 {/* Voice Button with Microphone Icon */}
-                <button className="microphone-button" onClick={handleVoiceClick}>
+                <button 
+                  className={`microphone-button ${isRecording ? 'recording' : ''}`} 
+                  onClick={handleVoiceClick}
+                  title={isRecording ? 'Aufnahme stoppen (Klicken zum Stoppen)' : 'Sprachaufnahme starten (Klicken zum Starten)'}
+                  aria-label={isRecording ? 'Aufnahme läuft - Klicken zum Stoppen' : 'Sprachaufnahme starten'}
+                >
                   <img 
                     src="/microphone.svg" 
-                    alt="Voice Input" 
+                    alt={isRecording ? "Aufnahme läuft" : "Voice Input"} 
                     className="microphone-icon"
                   />
+                  {isRecording && <div className="recording-indicator"></div>}
                 </button>
-
-              
               </>
             )}
           </div>
