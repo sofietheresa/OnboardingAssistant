@@ -13,19 +13,66 @@
 /* Global reset and base styles */
 html, body, #root { 
   height: 100%; 
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body { 
   margin: 0; 
+  padding: 0;
   background: var(--bg); 
   color: var(--text); 
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; 
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .app-shell {
-  min-height: 100%;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ==========================================
+   RESPONSIVE UTILITIES
+   ========================================== */
+
+/* Container for responsive layouts */
+.responsive-container {
+  width: 100%;
+  max-width: min(90vw, 1200px);
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 32px);
+  box-sizing: border-box;
+}
+
+/* Responsive text utilities */
+.text-responsive {
+  font-size: clamp(14px, 2.5vw, 18px);
+  line-height: 1.4;
+}
+
+.text-responsive-large {
+  font-size: clamp(18px, 3vw, 24px);
+  line-height: 1.3;
+}
+
+.text-responsive-xl {
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1.2;
+}
+
+/* Responsive spacing utilities */
+.spacing-responsive {
+  padding: clamp(16px, 3vw, 32px);
+  margin: clamp(16px, 3vw, 32px);
 }
 
 /* ==========================================
@@ -86,4 +133,148 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   RESPONSIVE BREAKPOINTS
+   ========================================== */
+
+/* Mobile first approach */
+@media (max-width: 480px) {
+  .responsive-container {
+    padding: 0 clamp(12px, 4vw, 20px);
+  }
+}
+
+/* Tablet */
+@media (min-width: 481px) and (max-width: 768px) {
+  .responsive-container {
+    padding: 0 clamp(16px, 4vw, 24px);
+  }
+}
+
+/* Desktop */
+@media (min-width: 769px) {
+  .responsive-container {
+    padding: 0 clamp(20px, 3vw, 32px);
+  }
+}
+
+/* Large screens */
+@media (min-width: 1200px) {
+  .responsive-container {
+    max-width: 1200px;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 600px) and (orientation: landscape) {
+  body {
+    min-height: 100vh;
+  }
+  
+  .app-shell {
+    min-height: 100vh;
+  }
+}
+
+/* ==========================================
+   ACCESSIBILITY & PERFORMANCE
+   ========================================== */
+
+/* Smooth scrolling for modern browsers */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --bg: #000000;
+    --card: #1a1a1a;
+    --accent: #ffff00;
+    --accent-text: #000000;
+    --text: #ffffff;
+  }
+  
+  /* Enhanced focus indicators for high contrast */
+  button:focus-visible,
+  .btn-link:focus-visible,
+  .plus-button-outside:focus-visible,
+  .microphone-button:focus-visible,
+  .soundwave-button:focus-visible,
+  .send-button:focus-visible,
+  .yellow-arrow:focus-visible,
+  .back-button:focus-visible {
+    outline: 3px solid #FFFFFF;
+    outline-offset: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==========================================
+   PERFORMANCE OPTIMIZATIONS
+   ========================================== */
+
+/* Hardware acceleration for smooth animations */
+.app-shell,
+.onboarding,
+.chat-screen {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize paint and layout */
+* {
+  box-sizing: border-box;
+}
+
+/* Reduce repaints for fixed elements */
+.chat-header,
+.chat-input-container {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* ==========================================
+   SMOOTH TRANSITIONS
+   ========================================== */
+
+/* Global smooth transitions for interactive elements */
+button,
+.btn-link,
+.plus-button-outside,
+.microphone-button,
+.soundwave-button,
+.send-button,
+.yellow-arrow,
+.back-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus states for better accessibility */
+button:focus-visible,
+.btn-link:focus-visible,
+.plus-button-outside:focus-visible,
+.microphone-button:focus-visible,
+.soundwave-button:focus-visible,
+.send-button:focus-visible,
+.yellow-arrow:focus-visible,
+.back-button:focus-visible {
+  outline: 2px solid #FEFA00;
+  outline-offset: 2px;
+  border-radius: 4px;
 }

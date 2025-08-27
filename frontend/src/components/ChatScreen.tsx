@@ -10,7 +10,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   isLoading 
 }) => {
   const [inputValue, setInputValue] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,28 +24,32 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      onSendMessage(inputValue.trim());
+    if (inputValue.trim() || selectedFile) {
+      onSendMessage(inputValue.trim(), selectedFile);
       setInputValue('');
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   const handlePlusClick = () => {
-    // Create file input element
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.multiple = true;
-    fileInput.accept = '*/*'; // Accept all file types
-    
-    fileInput.onchange = (event) => {
-      const files = (event.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        console.log('Selected files:', Array.from(files).map(f => f.name));
-        // TODO: Handle file upload to backend
-      }
-    };
-    
-    fileInput.click();
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Reset file input to allow re-selection of the same file
+    }
   };
 
   const handleVoiceClick = () => {
@@ -56,19 +62,22 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       <div className="chat-screen">
         {/* Header Section - Exact from Figma */}
         <div className="chat-header">
-          {/* Back Button with Boardy Robot */}
-          <div className="back-button-container">
-            <button className="back-button" onClick={onBackToOnboarding}>
-              <img 
-                src="/boardy_small.svg" 
-                alt="Boardy Robot" 
-                className="boardy-icon"
-              />
-            </button>
+          {/* Left side: Arrow and Boardy */}
+          <div className="header-left">
+            {/* Yellow Arrow pointing left - Navigation */}
+            <div className="yellow-arrow" onClick={onBackToOnboarding}>←</div>
+            
+            {/* Back Button with Boardy Robot */}
+            <div className="back-button-container">
+              <button className="back-button" onClick={onBackToOnboarding}>
+                <img 
+                  src="/boardy_small.svg" 
+                  alt="Boardy Robot" 
+                  className="boardy-icon"
+                />
+              </button>
+            </div>
           </div>
-
-          {/* Yellow Arrow pointing left - Navigation */}
-          <div className="yellow-arrow" onClick={onBackToOnboarding}>←</div>
 
           {/* Location Title (e.g., "UDG Ludwigsburg") */}
           <div className="location-title">
@@ -118,15 +127,31 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
           {/* Light blue input background container */}
           <div className="input-background">
-            {/* Text Input - füllt den verfügbaren Platz */}
+            {/* Hidden File Input */}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              style={{ display: 'none' }} 
+              accept="*/*"
+            />
+
+            {/* Text Input Form */}
             <form onSubmit={handleSubmit} className="chat-input-form">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Frag etwas!"
-                className="message-input"
-              />
+              {selectedFile ? (
+                <div className="selected-file-badge">
+                  <span>{selectedFile.name}</span>
+                  <button type="button" onClick={handleRemoveFile} className="remove-file-button">×</button>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Frag etwas!"
+                  className="message-input"
+                />
+              )}
             </form>
 
             {/* Conditional buttons based on input */}
@@ -146,15 +171,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
                   />
                 </button>
 
-                {/* Soundwave Button - Dark blue circle with yellow bars */}
-                <button className="soundwave-button">
-                  <div className="soundwave-bars">
-                    <div className="bar bar-1"></div>
-                    <div className="bar bar-2"></div>
-                    <div className="bar bar-3"></div>
-                    <div className="bar bar-4"></div>
-                  </div>
-                </button>
+              
               </>
             )}
           </div>

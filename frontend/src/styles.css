@@ -1,17 +1,80 @@
 /* ==========================================
-   MAIN STYLES FILE
+   MAIN APPLICATION STYLES - RESPONSIVE DESIGN
    ========================================== */
 
-/* 
-   Diese Datei importiert alle anderen CSS-Dateien.
-   Komponenten-spezifische Styles sind in separate Dateien aufgeteilt:
-   
-   - global.css: Globale Variablen, Reset, Utility-Klassen
-   - OnboardingScreen.css: Styles für die Onboarding-Seite
-   - ChatScreen.css: Styles für die Chat-Seite
-*/
-
-/* Importiere alle CSS-Module */
+/* Import all component styles */
 @import './styles/global.css';
-@import './styles/OnboardingScreen.css'; 
+@import './styles/OnboardingScreen.css';
 @import './styles/ChatScreen.css';
+
+/* ==========================================
+   RESPONSIVE LAYOUT OVERRIDES
+   ========================================== */
+
+/* Ensure the app takes full viewport */
+#root {
+  width: 100%;
+  height: 100vh;
+  overflow-x: hidden;
+}
+
+/* App shell responsive adjustments */
+.app-shell {
+  width: 100%;
+  height: 100vh;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================
+   VIEWPORT OPTIMIZATIONS
+   ========================================== */
+
+/* Prevent horizontal scrolling on all devices */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Mobile viewport optimization */
+@media (max-width: 768px) {
+  .app-shell {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+}
+
+/* Landscape mobile optimization */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+  }
+}
+
+/* ==========================================
+   PRINT STYLES
+   ========================================== */
+
+@media print {
+  .app-shell {
+    height: auto;
+    overflow: visible;
+  }
+  
+  .chat-header,
+  .chat-input-container {
+    display: none;
+  }
+  
+  .chat-messages {
+    padding: 0;
+    margin: 0;
+  }
+  
+  .message {
+    break-inside: avoid;
+    margin-bottom: 1em;
+  }
+}
