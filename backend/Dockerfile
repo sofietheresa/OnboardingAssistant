@@ -13,20 +13,24 @@ RUN npm run build
 FROM python:3.11-slim AS backend
 WORKDIR /app
 
-# System libs für psycopg2
+# System-CA-Zertifikate (wichtig für Postgres TLS) und System libs für psycopg2
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libc6-dev && rm -rf /var/lib/apt/lists/*
+    build-essential \
+    libc6-dev \
+    ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+
 
 # Python Dependencies
-COPY backend/requirements.txt .
+COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Frontend Build in Image kopieren
-COPY --from=frontend-build /app/frontend/build /app/frontend/build
 
 # Backend Source (inkl. allen app/ und ingest/ Modulen)
-COPY backend/ /app/
+COPY ./ .
 
-EXPOSE 8000
-
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Expose (Info, Code Engine nimmt $PORT)
+ENV PORT=8000
+CMD ["bash","-lc","uvicorn server:app --host 0.0.0.0 --port ${PORT}"]

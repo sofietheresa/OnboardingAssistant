@@ -32,8 +32,14 @@ def load_documents(paths: Iterable[Path]) -> Iterable[Dict]:
         if ext in LOADERS:
             text = LOADERS[ext](p)
             text = re.sub(r"[ \t]+", " ", text).strip()
+            aud = p.parent.name.lower()
             yield {
                 "doc_id": p.name,
                 "text": text,
-                "metadata": {"filename": p.name, "path": str(p), "source": "file"},
+                "metadata": {
+                    "filename": p.name,
+                    "path": str(p),
+                    "source": "file",
+                    "audience": aud,
+                },
             }
