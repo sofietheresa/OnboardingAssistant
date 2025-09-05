@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -17,7 +16,7 @@ app = FastAPI(title="Boardy Onboarding Assistant API")
 # ---- CORS ----
 cors_origins_env = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:8000,https://localhost:5173",
+    "http://localhost:5173,http://localhost:8000,https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud",
 )
 allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 app.add_middleware(
@@ -38,17 +37,7 @@ if frontend_path.exists():
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-# ---- Datenmodelle für LiteLLM-Chat ----
-class ChatRequest(BaseModel):
-    message: str
-    model: str = "llama-3-8b"
-    location: str = ""
-
-class ChatResponse(BaseModel):
-    response: str
-    model: str
-    location: str
-
+# ---- Datenmodelle ----
 class Location(BaseModel):
     id: str
     name: str
@@ -63,11 +52,6 @@ async def health_check():
 async def api_health():
     return {"status": "healthy", "api": "Boardy API"}
 
-# 👉 zusätzlich: Health aus RAG-Welt
-@app.get("/health")
-async def rag_health():
-    return {"status": "ok", "service": "RAG Backend"}
-
 # ---- Locations ----
 @app.get("/api/locations", response_model=list[Location])
 async def list_locations():
@@ -77,51 +61,6 @@ async def list_locations():
         Location(id="ludwigsburg", name="UDG Ludwigsburg", description="Digitalagentur im IBM iX Netzwerk."),
     ]
 
-# ---- Chat über LiteLLM ----
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    try:
-        litellm_url = os.getenv("LITELLM_URL", "http://localhost:4000")
-        default_model = os.getenv("DEFAULT_MODEL", request.model or "llama-3-8b")
-
-        system_message = f"""Du bist Boardy, ein freundlicher Onboarding-Assistent für IBM-Standorte.
-        Der Benutzer befindet sich am Standort: {request.location}
-        Hilf dem Benutzer bei allen Fragen rund um den Standort, IBM-Produkte, Prozesse und das Onboarding.
-        Antworte auf Deutsch."""
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{litellm_url}/chat/completions",
-                json={
-                    "model": default_model,
-                    "messages": [
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": request.message},
-                    ],
-                    "stream": False,
-                },
-                timeout=30.0,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                assistant_message = data["choices"][0]["message"]["content"]
-                return ChatResponse(
-                    response=assistant_message,
-                    model=default_model,
-                    location=request.location,
-                )
-            else:
-                raise HTTPException(status_code=response.status_code, detail="LiteLLM request failed")
-
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=503, detail=f"LiteLLM service unavailable: {str(e)}")
-    except Exception as e:
-        return ChatResponse(
-            response=f"(Fallback) '{request.message}' (LLM nicht verfügbar)",
-            model=default_model if "default_model" in locals() else request.model,
-            location=request.location,
-        )
 
 # ---- Chat über RAG (neuer Endpoint) ----
 @app.post("/v1/ask", response_model=AskResponse)

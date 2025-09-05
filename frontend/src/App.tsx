@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import ChatScreen from './components/ChatScreen';
 import OnboardingScreen from './components/OnboardingScreen';
 import { Location, Message, FileAttachment, AudioAttachment } from './types';
@@ -15,11 +15,10 @@ const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const isLoading = false; // wire up to backend later
 
-  const locationById = useMemo(() => {
-    const map: Record<string, Location> = {};
-    LOCATIONS.forEach((l) => { map[l.id] = l; });
+  const locationById = LOCATIONS.reduce((map, location) => {
+    map[location.id] = location;
     return map;
-  }, []);
+  }, {} as Record<string, Location>);
 
   const handleChooseLocation = (id: string) => {
     setSelectedLocation(locationById[id]);
@@ -35,9 +34,8 @@ const App: React.FC = () => {
 
   // Load locations from backend if available (keeps UI in sync)
   useEffect(() => {
-    fetch('/api/locations')
-      .then((r) => (r.ok ? r.json() : []))
-      .catch(() => []);
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
+    fetch(`${apiBaseUrl}/api/locations`).catch(() => {});
   }, []);
 
   const handleBackToOnboarding = () => {
@@ -57,34 +55,18 @@ const App: React.FC = () => {
     
     setMessages((prev) => [...prev, newMessage]);
     
-    // Create FormData for file uploads
-    const formData = new FormData();
-    formData.append('message', text);
-    formData.append('location', selectedLocation?.name ?? '');
-    
-    if (fileAttachment) {
-      formData.append('hasFile', 'true');
-      formData.append('fileName', fileAttachment.name);
-      formData.append('fileType', fileAttachment.type);
-      // In a real implementation, you would append the actual file here
-    }
-    
-    if (audioAttachment) {
-      formData.append('hasAudio', 'true');
-      formData.append('audioDuration', audioAttachment.duration.toString());
-      // In a real implementation, you would append the actual audio blob here
-    }
-    
     // Send to backend (non-blocking, append response when returned)
-    fetch('/api/chat', {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
+    fetch(`${apiBaseUrl}/v1/ask`, {
       method: 'POST',
-      body: formData
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: text })
     })
       .then((r) => r.json())
       .then((data) => {
         setMessages((prev) => [...prev, { 
           id: crypto.randomUUID(), 
-          text: data.response, 
+          text: data.answer, 
           isUser: false, 
           timestamp: new Date() 
         }]);

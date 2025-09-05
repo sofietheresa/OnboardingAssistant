@@ -73,34 +73,29 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputValue.trim() || selectedFile || audioBlob) {
-      // Convert File to FileAttachment if file is selected
-      const fileAttachment = selectedFile ? {
-        name: selectedFile.name,
-        size: selectedFile.size,
-        type: selectedFile.type,
-        url: URL.createObjectURL(selectedFile)
-      } : undefined;
+    if (!inputValue.trim() && !selectedFile && !audioBlob) return;
+    
+    const fileAttachment = selectedFile ? {
+      name: selectedFile.name,
+      size: selectedFile.size,
+      type: selectedFile.type,
+      url: URL.createObjectURL(selectedFile)
+    } : undefined;
 
-      // Convert AudioBlob to FileAttachment if audio is recorded
-      const audioAttachment = audioBlob ? {
-        name: 'Sprachaufnahme.wav',
-        size: audioBlob.size,
-        type: audioBlob.type,
-        url: URL.createObjectURL(audioBlob)
-      } : undefined;
-      
-      // Send message with text or just the attachment
-      const messageText = inputValue.trim() || (audioBlob ? '🎤 Sprachaufnahme gesendet' : '');
-      onSendMessage(messageText, fileAttachment || audioAttachment);
-      
-      setInputValue('');
-      setSelectedFile(null);
-      setAudioBlob(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+    const audioAttachment = audioBlob ? {
+      name: 'Sprachaufnahme.wav',
+      size: audioBlob.size,
+      type: audioBlob.type,
+      url: URL.createObjectURL(audioBlob)
+    } : undefined;
+    
+    const messageText = inputValue.trim() || (audioBlob ? '🎤 Sprachaufnahme gesendet' : '');
+    onSendMessage(messageText, fileAttachment || audioAttachment);
+    
+    setInputValue('');
+    setSelectedFile(null);
+    setAudioBlob(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handlePlusClick = () => {
@@ -109,21 +104,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
+    if (file) setSelectedFile(file);
   };
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''; // Reset file input to allow re-selection of the same file
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleRemoveAudio = () => {
-    setAudioBlob(null);
-  };
+  const handleRemoveAudio = () => setAudioBlob(null);
 
   const handleVoiceClick = () => {
     if (isRecording) {

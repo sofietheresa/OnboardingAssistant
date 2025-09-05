@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { OnboardingScreenProps } from '../types';
 import '../styles/OnboardingScreen.css';
 
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onChooseLocation }) => {
-  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <div className="onboarding" role="main">
@@ -17,8 +16,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onChooseLocation })
           <img 
             src="/boardy.svg" 
             alt="Boardy" 
-            className="bubble-img" 
-            onError={() => setImageFailed(true)} 
+            className="bubble-img"
           />
         </div>
 
