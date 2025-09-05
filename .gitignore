@@ -68,6 +68,23 @@ tmp/
 .env.local
 .env.production
 
+# SSL Certificates and Keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+ibm-*.pem
+*-ca.pem
+*-cert.pem
+*-key.pem
+
+# IBM Cloud Resources
+*crn*
+*resource*
+
 # Backup files
 *.bak
 *.backup
