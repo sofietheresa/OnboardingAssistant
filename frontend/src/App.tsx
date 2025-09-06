@@ -68,7 +68,8 @@ const App: React.FC = () => {
           id: crypto.randomUUID(), 
           text: data.answer, 
           isUser: false, 
-          timestamp: new Date() 
+          timestamp: new Date(),
+          sources: data.sources || []
         }]);
       })
       .catch(() => {

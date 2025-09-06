@@ -4,6 +4,12 @@ export interface Location {
   description: string;
 }
 
+export interface Source {
+  title: string;
+  doc_id: string;
+  chunk_id: number;
+}
+
 export interface Message {
   id: string;
   text: string;
@@ -11,6 +17,7 @@ export interface Message {
   timestamp: Date;
   fileAttachment?: FileAttachment;
   audioAttachment?: AudioAttachment;
+  sources?: Source[];
 }
 
 export interface FileAttachment {

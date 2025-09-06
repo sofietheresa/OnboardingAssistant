@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChatScreenProps } from '../types';
+import { ChatScreenProps, Source } from '../types';
 import '../styles/ChatScreen.css';
 
 const ChatScreen: React.FC<ChatScreenProps> = ({ 
@@ -122,6 +122,53 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     }
   };
 
+  const formatMessageWithSources = (text: string, sources?: Source[]) => {
+    // Extrahiere nur den Text nach "ANTWORT:" oder "ANTWORT" und entferne "Quellen:"-Teil
+    const extractAnswer = (fullText: string) => {
+      const answerMatch = fullText.match(/ANTWORT:?\s*(.*)/s);
+      if (answerMatch) {
+        let answerText = answerMatch[1].trim();
+        
+        // Entferne den "Quellen:"-Teil am Ende
+        answerText = answerText.replace(/\n?\s*Quellen:\s*.*$/s, '').trim();
+        
+        return answerText;
+      }
+      // Falls kein "ANTWORT:" gefunden wird, gib den gesamten Text zurück
+      return fullText;
+    };
+
+    const answerText = extractAnswer(text);
+
+    if (!sources || sources.length === 0) {
+      return <span>{answerText}</span>;
+    }
+
+    // Erstelle Quellen-Buttons
+    const sourceButtons = sources.map((source, index) => (
+      <button
+        key={`${source.doc_id}-${source.chunk_id}-${index}`}
+        className="source-button"
+        onClick={() => {
+          // Hier könntest du eine Funktion hinzufügen, um die Quelle zu öffnen
+          console.log('Quelle geöffnet:', source);
+        }}
+        title={`Quelle: ${source.title}`}
+      >
+        {source.title}
+      </button>
+    ));
+
+    return (
+      <div className="message-with-sources">
+        <span className="answer-text">{answerText}</span>
+        <div className="sources-container">
+          {sourceButtons}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="chat-container">
       <div className="chat-screen">
@@ -163,7 +210,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           {messages.slice(1).map((message) => (
             <div key={message.id} className={`message ${message.isUser ? 'user' : 'assistant'}`}>
               <div className="message-content">
-                {message.text}
+                {message.isUser ? (
+                  message.text
+                ) : (
+                  formatMessageWithSources(message.text, message.sources)
+                )}
               </div>
             </div>
           ))}
