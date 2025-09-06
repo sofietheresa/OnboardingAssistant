@@ -43,11 +43,11 @@
   right: 0;
   top: 0;
   background: #1C3458;
-  border-radius: 0 0 0 20px;
+  border-radius: 0 0 0 0 px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 0 0 clamp(16px, 4vw, 32px);
+  padding: 0 0 0 clamp(16px, 4vw, 16px);
   box-sizing: border-box;
   box-shadow: 0 4px 20px rgba(28, 52, 88, 0.3);
   z-index: 1000;
