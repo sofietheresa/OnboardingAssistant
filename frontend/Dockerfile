@@ -19,4 +19,4 @@ RUN npm i -g serve
 ENV PORT=8080
 COPY --from=build /app/build ./build
 # Wichtig: Shell-Form, damit $PORT expandiert
-CMD ["sh","-lc","serve -s dist -l ${PORT:-8080}"]
+CMD ["sh","-lc","serve -s build -l tcp://0.0.0.0:${PORT:-8080}"]
