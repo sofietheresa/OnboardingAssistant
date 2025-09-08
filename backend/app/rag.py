@@ -5,9 +5,13 @@ from .llm import WatsonxAILLM
 from .db import get_conn
 
 SYSTEM_PROMPT = (
-    "Du bist ein Onboarding-Assistent der Firma. Antworte kurz, korrekt, auf Deutsch. "
-    "Nutze ausschließlich die bereitgestellten Kontexte. Wenn du unsicher bist, "
-    "sage dies klar und schlage einen Eskalationsweg vor. Nenne immer die Quellen (Titel#Chunk)."
+    "Du bist Boardy, ein freundlicher Onboarding-Assistent der Firma. "
+    "Du kannst sowohl Smalltalk führen als auch fachliche Fragen beantworten. "
+    "Antworte kurz, korrekt und freundlich auf Deutsch. "
+    "Bei fachlichen Fragen nutze ausschließlich die bereitgestellten Kontexte. "
+    "Bei Smalltalk oder allgemeinen Fragen antworte natürlich und hilfsbereit. "
+    "Wenn du unsicher bist, sage dies klar und schlage einen Eskalationsweg vor. "
+    "Bei fachlichen Antworten nenne immer die Quellen (Titel#Chunk)."
 )
 
 def format_prompt(question: str, contexts: List[Dict]) -> str:
@@ -46,7 +50,49 @@ async def retrieve(query: str, k: int = 6) -> List[Dict]:
             rows = cur.fetchall()
             return rows
 
+def is_smalltalk(question: str) -> bool:
+    """
+    Erkennt Smalltalk-Fragen basierend auf Schlüsselwörtern und Mustern.
+    """
+    smalltalk_keywords = [
+        "hallo", "hi", "hey", "guten tag", "guten morgen", "guten abend",
+        "wie geht", "wie gehts", "was machst", "was machst du",
+        "danke", "bitte", "tschüss", "auf wiedersehen", "bye",
+        "wie heißt", "wer bist", "was bist", "woher kommst",
+        "schönes wetter", "schlecht wetter", "regen", "sonne",
+        "wie alt", "wo wohnst", "hast du", "magst du",
+        "lustig", "witzig", "spaß", "langweilig",
+        "müde", "hungrig", "durstig", "krank",
+        "wochenende", "urlaub", "feiern", "party"
+    ]
+    
+    question_lower = question.lower().strip()
+    
+    # Prüfe auf direkte Smalltalk-Keywords
+    for keyword in smalltalk_keywords:
+        if keyword in question_lower:
+            return True
+    
+    # Prüfe auf sehr kurze Fragen (oft Smalltalk)
+    if len(question_lower.split()) <= 2 and not any(word in question_lower for word in ["was", "wie", "wo", "wann", "warum", "wer"]):
+        return True
+    
+    # Prüfe auf Begrüßungen
+    if any(greeting in question_lower for greeting in ["hallo", "hi", "hey", "guten"]):
+        return True
+    
+    return False
+
 async def answer(question: str) -> Dict:
+    # Prüfe ob es sich um Smalltalk handelt
+    if is_smalltalk(question):
+        # Für Smalltalk keine Kontextsuche, direkte Antwort
+        llm = WatsonxAILLM()
+        smalltalk_prompt = f"Du bist Boardy, ein freundlicher Onboarding-Assistent. Antworte auf diese Smalltalk-Frage natürlich und hilfsbereit auf Deutsch: {question}"
+        output = await llm.generate(SYSTEM_PROMPT, smalltalk_prompt)
+        return {"answer": output, "sources": []}
+    
+    # Normale fachliche Antwort mit Kontextsuche
     contexts = await retrieve(question, k=6)
     prompt = format_prompt(question, contexts)
 

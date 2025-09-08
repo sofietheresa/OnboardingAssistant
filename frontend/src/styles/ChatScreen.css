@@ -24,14 +24,13 @@
 }
 
 .chat-container {
-  flex: 1;
-  display: block;
-  padding: 0;
-  margin: 0;
-  background: #F5F5F5;
+  position: relative;
   width: 100%;
-  height: calc(100vh - var(--header-h) - var(--footer-h));
-  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+  height: 100vh;
+  background: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ===== CHAT HEADER SECTION ===== */
@@ -135,15 +134,19 @@
 
 /* ===== CHAT MESSAGES SECTION ===== */
 .chat-messages {
-  position: relative;
+  position: absolute;
+  top: var(--header-h);
+  bottom: var(--footer-h);
+  left: 0;
+  right: 0;
   width: 100%;
-  flex: 1;
   padding: clamp(10px, 2.5vw, 20px) clamp(15px, 3vw, 30px);
+  padding-bottom: clamp(10px, 3vw, 20px);
   display: flex;
   flex-direction: column;
   gap: clamp(12px, 2.2vw, 24px);
-  height: calc(100vh - var(--header-h) - var(--footer-h));
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .message {
@@ -648,18 +651,21 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
 }
 
 .answer-text {
   display: block;
   margin-bottom: 8px;
+  width: 100%;
 }
 
 .sources-container {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   margin-top: 8px;
+  width: 100%;
 }
 
 .source-button {
@@ -667,14 +673,15 @@
   color: #FFFFFF;
   border: none;
   border-radius: 16px;
-  padding: 6px 12px;
+  padding: 8px 16px;
   font-size: clamp(11px, 1.4vw, 14px);
   font-family: 'Open Sans', sans-serif;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(28, 52, 88, 0.2);
-  max-width: 200px;
+  width: 100%;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -698,9 +705,9 @@
   }
   
   .source-button {
-    padding: 5px 10px;
+    padding: 6px 12px;
     font-size: 12px;
-    max-width: 150px;
+    width: 100%;
   }
 }
 

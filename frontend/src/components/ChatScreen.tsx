@@ -123,19 +123,33 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const formatMessageWithSources = (text: string, sources?: Source[]) => {
-    // Extrahiere nur den Text nach "ANTWORT:" oder "ANTWORT" und entferne "Quellen:"-Teil
+    // Extrahiere nur den Text zwischen "ANTWORT:" und dem nächsten Schlüsselwort
     const extractAnswer = (fullText: string) => {
-      const answerMatch = fullText.match(/ANTWORT:?\s*(.*)/s);
+      // Entferne zuerst alle "Quellen:"-Teile am Ende
+      let cleanText = fullText.replace(/\n?\s*Quellen:?\s*.*$/s, '').trim();
+      
+      // Suche nach "ANTWORT:" und extrahiere Text
+      const answerMatch = cleanText.match(/ANTWORT:?\s*(.*)/s);
+      
       if (answerMatch) {
         let answerText = answerMatch[1].trim();
         
-        // Entferne den "Quellen:"-Teil am Ende
-        answerText = answerText.replace(/\n?\s*Quellen:\s*.*$/s, '').trim();
+        // Entferne weitere Schlüsselwörter am Ende
+        answerText = answerText.replace(/\n?\s*(?:Quellen|Quelle|Sources|Source|FRAGE|Frage|KONTEXT|Kontext|HINWEIS|Hinweis):\s*.*$/s, '').trim();
         
-        return answerText;
+        // Entferne Markdown-Formatierung
+        answerText = answerText.replace(/^\s*[-*]\s*/gm, ''); // Listenzeichen
+        answerText = answerText.replace(/\*\*(.*?)\*\*/g, '$1'); // Fett-Formatierung
+        answerText = answerText.replace(/\*(.*?)\*/g, '$1'); // Kursiv-Formatierung
+        answerText = answerText.replace(/`(.*?)`/g, '$1'); // Code-Formatierung
+        answerText = answerText.replace(/#{1,6}\s*/g, ''); // Überschriften
+        answerText = answerText.replace(/\n{3,}/g, '\n\n'); // Mehrfache Zeilenumbrüche
+        
+        return answerText.trim();
       }
-      // Falls kein "ANTWORT:" gefunden wird, gib den gesamten Text zurück
-      return fullText;
+      
+      // Fallback: Falls kein "ANTWORT:" gefunden wird, gib den gesamten Text zurück
+      return cleanText.trim();
     };
 
     const answerText = extractAnswer(text);
@@ -144,8 +158,13 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       return <span>{answerText}</span>;
     }
 
+    // Entferne Duplikate basierend auf doc_id und title
+    const uniqueSources = sources.filter((source, index, self) => 
+      index === self.findIndex(s => s.doc_id === source.doc_id && s.title === source.title)
+    );
+
     // Erstelle Quellen-Buttons
-    const sourceButtons = sources.map((source, index) => (
+    const sourceButtons = uniqueSources.map((source, index) => (
       <button
         key={`${source.doc_id}-${source.chunk_id}-${index}`}
         className="source-button"
@@ -222,7 +241,6 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           {/* Loading indicator */}
           {isLoading && (
             <div className="loading-indicator">
-              <span>Boardy tippt</span>
               <div className="typing-animation">
                 <span></span>
                 <span></span>
@@ -260,6 +278,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
                 placeholder="Frag etwas!"
                 className="message-input"
                 rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
                 onInput={(e) => {
                   // Automatische Höhenanpassung
                   const target = e.target as HTMLTextAreaElement;

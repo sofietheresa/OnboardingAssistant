@@ -13,7 +13,7 @@ const LOCATIONS: Location[] = [
 const App: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const isLoading = false; // wire up to backend later
+  const [isLoading, setIsLoading] = useState(false);
 
   const locationById = LOCATIONS.reduce((map, location) => {
     map[location.id] = location;
@@ -54,6 +54,7 @@ const App: React.FC = () => {
     };
     
     setMessages((prev) => [...prev, newMessage]);
+    setIsLoading(true);
     
     // Send to backend (non-blocking, append response when returned)
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
@@ -79,6 +80,9 @@ const App: React.FC = () => {
           isUser: false, 
           timestamp: new Date() 
         }]);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   };
 
