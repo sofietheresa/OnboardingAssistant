@@ -16,15 +16,18 @@ app = FastAPI(title="Boardy Onboarding Assistant API")
 # ---- CORS ----
 cors_origins_env = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:8000,https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud",
+    "http://localhost:5173,http://localhost:8000,"
+    "https://boardy-frontend-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud",
 )
 allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins or ["*"],
+    allow_origins=allowed_origins, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],            
+    max_age=600,                   
 )
 
 # ---- React Frontend ----
