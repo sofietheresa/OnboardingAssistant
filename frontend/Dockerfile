@@ -17,6 +17,6 @@ FROM node:20-alpine
 WORKDIR /app
 RUN npm i -g serve
 ENV PORT=8080
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/build ./build
 # Wichtig: Shell-Form, damit $PORT expandiert
 CMD ["sh","-lc","serve -s dist -l ${PORT:-8080}"]
