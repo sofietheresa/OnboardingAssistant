@@ -19,7 +19,9 @@ const App: React.FC = () => {
     map[location.id] = location;
     return map;
   }, {} as Record<string, Location>);
-
+  // The OnboardingScreen component is imported from './components/OnboardingScreen'
+  // Its file path is:
+  // /Users/furkansaygin/Documents/Master/AI Labs/OnboardingAssistant/frontend/src/components/OnboardingScreen.tsx
   const handleChooseLocation = (id: string) => {
     setSelectedLocation(locationById[id]);
     setMessages([
@@ -34,7 +36,7 @@ const App: React.FC = () => {
 
   // Load locations from backend if available (keeps UI in sync)
   useEffect(() => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
+    const apiBaseUrl = import.meta.env.VITE_BACKEND_URL;
     fetch(`${apiBaseUrl}/api/locations`).catch(() => {});
   }, []);
 
