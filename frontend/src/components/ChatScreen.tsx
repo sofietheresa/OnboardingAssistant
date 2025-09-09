@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatScreenProps, Source } from '../types';
+import { speechToTextService } from '../services/speechToTextService';
+import { textToSpeechService } from '../services/textToSpeechService';
 import '../styles/ChatScreen.css';
 
 const ChatScreen: React.FC<ChatScreenProps> = ({ 
@@ -13,6 +15,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -48,13 +52,16 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setAudioBlob(audioBlob);
+      mediaRecorder.onstop = async () => {
+        // Erstelle Audio-Blob mit korrektem Format für Watson
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         setIsRecording(false);
         
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop());
+        
+        // Audio direkt senden
+        await sendAudioMessage(audioBlob);
       };
 
       mediaRecorder.start();
@@ -68,6 +75,47 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
+    }
+  };
+
+  const sendAudioMessage = async (audioBlob: Blob) => {
+    try {
+      // Transkribiere Audio zu Text
+      const transcript = await speechToTextService.transcribeAudio(audioBlob);
+      
+      if (transcript.trim()) {
+        // Sende die transkribierte Nachricht direkt
+        onSendMessage(transcript);
+      } else {
+        alert('Keine Sprache erkannt. Bitte versuchen Sie es erneut.');
+      }
+    } catch (error) {
+      console.error('Audio-Verarbeitung fehlgeschlagen:', error);
+      alert(`Audio-Verarbeitung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    }
+  };
+
+  const playText = async (text: string, messageId: string) => {
+    try {
+      if (isPlaying) {
+        textToSpeechService.stopPlayback();
+        setIsPlaying(false);
+        setPlayingMessageId(null);
+        return;
+      }
+
+      setIsPlaying(true);
+      setPlayingMessageId(messageId);
+      
+      await textToSpeechService.playText(text);
+      
+      setIsPlaying(false);
+      setPlayingMessageId(null);
+    } catch (error) {
+      console.error('Text to Speech Fehler:', error);
+      alert(`Audio-Wiedergabe fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      setIsPlaying(false);
+      setPlayingMessageId(null);
     }
   };
 
@@ -232,7 +280,19 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
                 {message.isUser ? (
                   message.text
                 ) : (
-                  formatMessageWithSources(message.text, message.sources)
+                  <div className="assistant-message">
+                    <div className="message-text">
+                      {formatMessageWithSources(message.text, message.sources)}
+                    </div>
+                    <button
+                      className={`play-button ${playingMessageId === message.id ? 'playing' : ''}`}
+                      onClick={() => playText(message.text, message.id)}
+                      title={playingMessageId === message.id ? 'Audio stoppen' : 'Audio abspielen'}
+                      aria-label={playingMessageId === message.id ? 'Audio stoppen' : 'Audio abspielen'}
+                    >
+                      {playingMessageId === message.id ? '⏸️' : '🔊'}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -331,6 +391,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
               </div>
             )}
 
+
             {/* Conditional buttons based on input */}
             {inputValue.trim() || selectedFile || audioBlob ? (
               /* Send Button - Arrow pointing up */
@@ -343,8 +404,16 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
                 <button 
                   className={`microphone-button ${isRecording ? 'recording' : ''}`} 
                   onClick={handleVoiceClick}
-                  title={isRecording ? 'Aufnahme stoppen (Klicken zum Stoppen)' : 'Sprachaufnahme starten (Klicken zum Starten)'}
-                  aria-label={isRecording ? 'Aufnahme läuft - Klicken zum Stoppen' : 'Sprachaufnahme starten'}
+                  title={
+                    isRecording 
+                      ? 'Aufnahme stoppen (Klicken zum Stoppen)' 
+                      : 'Sprachaufnahme starten (Klicken zum Starten)'
+                  }
+                  aria-label={
+                    isRecording 
+                      ? 'Aufnahme läuft - Klicken zum Stoppen' 
+                      : 'Sprachaufnahme starten'
+                  }
                 >
                   <img 
                     src="/microphone.svg" 

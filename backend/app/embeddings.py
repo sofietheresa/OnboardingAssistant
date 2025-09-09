@@ -1,7 +1,7 @@
 # app/embeddings.py
 from typing import List
 import os, httpx, json
-from .ibm_auth import iam_token_manager
+from .ibm_auth import get_iam_token_manager
 
 API_VERSION = os.environ.get("WATSONX_API_VERSION", "2024-05-01")
 
@@ -13,7 +13,8 @@ class WatsonxAIEmbeddings:
         self.timeout = 60
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
-        token = await iam_token_manager.get_token()
+        token_manager = get_iam_token_manager()
+        token = await token_manager.get_token()
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",

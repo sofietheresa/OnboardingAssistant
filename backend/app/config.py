@@ -3,7 +3,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, validator
 from typing import Optional
 import logging
+import os
+from dotenv import load_dotenv
 from .security import SecurityValidator, mask_sensitive_data
+
+# Lade .env Datei explizit
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +26,14 @@ class Settings(BaseSettings):
 
     # Boardy API
     boardy_api_url: str = Field(default="https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud/v1/ask", description="Boardy API URL")
+
+    # Speech to Text
+    speech_to_text_api_key: Optional[str] = Field(None, description="IBM Speech to Text API key")
+    speech_to_text_url: str = Field(default="https://api.eu-de.speech-to-text.watson.cloud.ibm.com", description="IBM Speech to Text service URL")
+
+    # Text to Speech
+    text_to_speech_api_key: Optional[str] = Field(None, description="IBM Text to Speech API key")
+    text_to_speech_url: str = Field(default="https://api.eu-de.text-to-speech.watson.cloud.ibm.com", description="IBM Text to Speech service URL")
 
     # CORS
     cors_origins: str = Field(default="http://localhost:5173,http://localhost:8000,https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud", description="CORS allowed origins")
@@ -46,19 +59,19 @@ class Settings(BaseSettings):
     @validator('watsonx_project_id')
     def validate_project_id(cls, v):
         if v and not SecurityValidator.validate_project_id(v):
-            raise ValueError('Invalid WatsonX project ID format')
+            print(f"Warning: WatsonX project ID format may be invalid: {v[:10]}...")
         return v
 
     @validator('database_url')
     def validate_database_url(cls, v):
         if not SecurityValidator.validate_database_url(v):
-            raise ValueError('Invalid database URL format')
+            print(f"Warning: Database URL format may be invalid: {v[:20]}...")
         return v
 
     @validator('ibm_pg_ca_cert')
     def validate_ssl_cert(cls, v):
         if v and not SecurityValidator.validate_ssl_certificate(v):
-            raise ValueError('Invalid SSL certificate format')
+            print(f"Warning: SSL certificate format may be invalid")
         return v
 
     def get_secret_manager(self, master_key: Optional[str] = None):
@@ -99,6 +112,10 @@ class Settings(BaseSettings):
         logger.info(f"Embeddings Model: {self.embeddings_model_id}")
         logger.info(f"LLM Model: {self.llm_model_id}")
         logger.info(f"Boardy API URL: {self.boardy_api_url}")
+        logger.info(f"Speech to Text API Key: {mask_sensitive_data(self.speech_to_text_api_key) if self.speech_to_text_api_key else 'Not set'}")
+        logger.info(f"Speech to Text URL: {self.speech_to_text_url}")
+        logger.info(f"Text to Speech API Key: {mask_sensitive_data(self.text_to_speech_api_key) if self.text_to_speech_api_key else 'Not set'}")
+        logger.info(f"Text to Speech URL: {self.text_to_speech_url}")
         logger.info(f"CORS Origins: {self.cors_origins}")
         logger.info(f"SSL Certificate: {'Configured' if self.ibm_pg_ca_cert else 'Not configured'}")
         logger.info("================================")

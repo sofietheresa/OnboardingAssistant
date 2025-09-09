@@ -399,6 +399,65 @@
   animation: blink 1s ease-in-out infinite;
 }
 
+
+/* Disabled states */
+.microphone-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.send-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== TEXT TO SPEECH STYLES ===== */
+.assistant-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.message-text {
+  flex: 1;
+}
+
+.play-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.play-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.play-button.playing {
+  background-color: rgba(76, 175, 80, 0.2);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Responsive Play Button */
+@media (max-width: 768px) {
+  .play-button {
+    font-size: 14px;
+    padding: 2px;
+  }
+}
+
 @keyframes pulse {
   0% {
     transform: scale(1);
