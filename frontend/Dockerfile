@@ -8,8 +8,8 @@ COPY src ./src
 COPY public ./public
 RUN npm ci --no-audit --no-fund
 # API-URL zur Buildzeit setzen
-ARG VITE_BACKEND_URL
-ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+#ARG VITE_BACKEND_URL
+#ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
 RUN npm run build
 
 # --- Runtime (static server) ---
