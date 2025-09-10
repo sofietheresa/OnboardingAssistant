@@ -17,6 +17,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -41,8 +43,17 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          sampleRate: 16000,  // 16kHz für Watson Speech-to-Text
+          channelCount: 1,    // Mono
+          echoCancellation: false,
+          noiseSuppression: false
+        } 
+      });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -52,20 +63,39 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
         }
       };
 
+      // Timer für Aufnahmedauer
+      let timer: NodeJS.Timeout;
+      
       mediaRecorder.onstop = async () => {
+        clearInterval(timer);
+        
         // Erstelle Audio-Blob mit korrektem Format für Watson
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         setIsRecording(false);
+        setRecordingDuration(0);
         
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop());
+        
+        // Prüfe Mindestgröße der Audio-Daten
+        if (audioBlob.size < 100) {
+          alert(`Aufnahme zu kurz (${audioBlob.size} Bytes). Bitte sprechen Sie länger.`);
+          return;
+        }
         
         // Audio direkt senden
         await sendAudioMessage(audioBlob);
       };
 
-      mediaRecorder.start();
+      // Starte mit 100ms Intervallen für bessere Qualität
+      mediaRecorder.start(100);
       setIsRecording(true);
+      setRecordingDuration(0);
+      
+      // Timer für Aufnahmedauer starten
+      timer = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
     } catch (error) {
       console.error('Error accessing microphone:', error);
       alert('Mikrofon konnte nicht aktiviert werden. Bitte überprüfen Sie die Berechtigungen.');
@@ -74,24 +104,63 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+      // Kleine Verzögerung, um sicherzustellen, dass alle Audio-Daten erfasst werden
+      setTimeout(() => {
+        if (mediaRecorderRef.current && isRecording) {
+          mediaRecorderRef.current.stop();
+        }
+      }, 100);
     }
   };
 
   const sendAudioMessage = async (audioBlob: Blob) => {
     try {
+      console.log('Audio-Blob Größe:', audioBlob.size, 'Bytes');
+      console.log('Audio-Blob Typ:', audioBlob.type);
+      
+      // Prüfe Mindestgröße erneut
+      if (audioBlob.size < 100) {
+        alert(`Audio-Aufnahme zu kurz (${audioBlob.size} Bytes). Bitte sprechen Sie länger.`);
+        return;
+      }
+      
+      // Starte Transkription
+      setIsTranscribing(true);
+      
       // Transkribiere Audio zu Text
       const transcript = await speechToTextService.transcribeAudio(audioBlob);
       
       if (transcript.trim()) {
-        // Sende die transkribierte Nachricht direkt
-        onSendMessage(transcript);
+        // Setze den transkribierten Text in die Eingabezeile
+        setInputValue(transcript);
+        // Kein Audio-Blob speichern - nur Text verwenden
+        console.log('Transkription erfolgreich:', transcript);
       } else {
         alert('Keine Sprache erkannt. Bitte versuchen Sie es erneut.');
       }
     } catch (error) {
       console.error('Audio-Verarbeitung fehlgeschlagen:', error);
-      alert(`Audio-Verarbeitung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      console.error('Fehler-Details:', error);
+      
+      // Spezifischere Fehlermeldungen
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          alert('Verbindung zum Server fehlgeschlagen. Bitte überprüfen Sie, ob das Backend läuft.');
+        } else if (error.message.includes('Konfidenz') || error.message.includes('confidence')) {
+          // Bei Konfidenz-Problemen trotzdem versuchen, den Text zu verwenden
+          console.log('Konfidenz-Warnung, aber versuche trotzdem zu verwenden');
+          // Keine Fehlermeldung anzeigen, da das Backend jetzt niedrigere Konfidenz akzeptiert
+        } else if (error.message.includes('400')) {
+          alert('Audio-Aufnahme zu kurz oder unverständlich. Bitte sprechen Sie länger und deutlicher.');
+        } else {
+          alert(`Audio-Verarbeitung fehlgeschlagen: ${error.message}`);
+        }
+      } else {
+        alert('Audio-Verarbeitung fehlgeschlagen: Unbekannter Fehler');
+      }
+    } finally {
+      // Transkription beendet
+      setIsTranscribing(false);
     }
   };
 
@@ -121,7 +190,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() && !selectedFile && !audioBlob) return;
+    if (!inputValue.trim() && !selectedFile) return;
     
     const fileAttachment = selectedFile ? {
       name: selectedFile.name,
@@ -129,20 +198,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       type: selectedFile.type,
       url: URL.createObjectURL(selectedFile)
     } : undefined;
-
-    const audioAttachment = audioBlob ? {
-      name: 'Sprachaufnahme.wav',
-      size: audioBlob.size,
-      type: audioBlob.type,
-      url: URL.createObjectURL(audioBlob)
-    } : undefined;
     
-    const messageText = inputValue.trim() || (audioBlob ? '🎤 Sprachaufnahme gesendet' : '');
-    onSendMessage(messageText, fileAttachment || audioAttachment);
+    const messageText = inputValue.trim();
+    onSendMessage(messageText, fileAttachment);
     
     setInputValue('');
     setSelectedFile(null);
-    setAudioBlob(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -160,9 +221,14 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleRemoveAudio = () => setAudioBlob(null);
+  // handleRemoveAudio entfernt - wird nicht mehr benötigt
 
   const handleVoiceClick = () => {
+    // Verhindere Klicks während der Transkription
+    if (isTranscribing) {
+      return;
+    }
+    
     if (isRecording) {
       stopRecording();
     } else {
@@ -372,55 +438,52 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
               </div>
             )}
 
-            {/* Audio Recording Display - Bottom Left */}
-            {audioBlob && (
-              <div className="selected-file-display audio-display">
-                <div className="file-info">
-                  <span className="file-name" title="Sprachaufnahme">
-                    🎤 Sprachaufnahme
-                  </span>
-                  <button 
-                    type="button" 
-                    onClick={handleRemoveAudio} 
-                    className="remove-file-x"
-                    aria-label="Sprachaufnahme entfernen"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Audio Recording Display - Entfernt, da nur Text verwendet wird */}
 
 
             {/* Conditional buttons based on input */}
-            {inputValue.trim() || selectedFile || audioBlob ? (
+            {inputValue.trim() || selectedFile ? (
               /* Send Button - Arrow pointing up */
               <button className="send-button" onClick={handleSubmit}>
                 <div className="send-arrow">↑</div>
               </button>
             ) : (
               <>
-                {/* Voice Button with Microphone Icon */}
+                {/* Voice Button with Microphone Icon or Loading Spinner */}
                 <button 
-                  className={`microphone-button ${isRecording ? 'recording' : ''}`} 
+                  className={`microphone-button ${isRecording ? 'recording' : ''} ${isTranscribing ? 'transcribing' : ''}`} 
                   onClick={handleVoiceClick}
+                  disabled={isTranscribing}
                   title={
-                    isRecording 
-                      ? 'Aufnahme stoppen (Klicken zum Stoppen)' 
-                      : 'Sprachaufnahme starten (Klicken zum Starten)'
+                    isTranscribing
+                      ? 'Transkription läuft...'
+                      : isRecording 
+                        ? 'Aufnahme stoppen (Klicken zum Stoppen)' 
+                        : 'Sprachaufnahme starten (Klicken zum Starten)'
                   }
                   aria-label={
-                    isRecording 
-                      ? 'Aufnahme läuft - Klicken zum Stoppen' 
-                      : 'Sprachaufnahme starten'
+                    isTranscribing
+                      ? 'Transkription läuft - Bitte warten'
+                      : isRecording 
+                        ? 'Aufnahme läuft - Klicken zum Stoppen' 
+                        : 'Sprachaufnahme starten'
                   }
                 >
-                  <img 
-                    src="/microphone.svg" 
-                    alt={isRecording ? "Aufnahme läuft" : "Voice Input"} 
-                    className="microphone-icon"
-                  />
-                  {isRecording && <div className="recording-indicator"></div>}
+                  {isTranscribing ? (
+                    <div className="loading-spinner"></div>
+                  ) : (
+                    <img 
+                      src="/microphone.svg" 
+                      alt={isRecording ? "Aufnahme läuft" : "Voice Input"} 
+                      className="microphone-icon"
+                    />
+                  )}
+                  {isRecording && (
+                    <>
+                      <div className="recording-indicator"></div>
+                      <div className="recording-duration">{recordingDuration}s</div>
+                    </>
+                  )}
                 </button>
               </>
             )}

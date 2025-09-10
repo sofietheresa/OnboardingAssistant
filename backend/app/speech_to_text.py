@@ -32,15 +32,23 @@ class SpeechToTextService:
         Transkribiert Audio-Daten zu Text mit Watson Speech to Text
         """
         try:
-            # Audio-Format wird automatisch basierend auf content_type erkannt
+            # Watson Speech to Text unterstützt verschiedene Formate
+            # Verwende das beste verfügbare Format basierend auf dem Input
             
-            # Watson Speech to Text API aufrufen
-            # Konvertiere content_type für Watson
-            watson_content_type = content_type
             if content_type == 'audio/webm':
                 watson_content_type = 'audio/webm'
             elif content_type == 'audio/wav':
-                watson_content_type = 'audio/wav'
+                # Für WAV verwende audio/l16 mit 16kHz Sample Rate
+                watson_content_type = 'audio/l16;rate=16000;channels=1'
+            elif content_type == 'audio/mp4':
+                watson_content_type = 'audio/mp4'
+            elif content_type == 'audio/ogg':
+                watson_content_type = 'audio/ogg;codecs=opus'
+            else:
+                # Fallback: Versuche es mit dem ursprünglichen Format
+                watson_content_type = content_type
+            
+            print(f"Verwende Watson Content-Type: {watson_content_type}")
             
             response = self.speech_to_text.recognize(
                 audio=audio_data,
@@ -53,14 +61,13 @@ class SpeechToTextService:
                 transcript = response['results'][0]['alternatives'][0]['transcript']
                 confidence = response['results'][0]['alternatives'][0].get('confidence', 0)
                 
-                # Nur Transkripte mit ausreichender Konfidenz zurückgeben
-                if confidence > 0.3:  # Mindest-Konfidenz von 30%
+                # Akzeptiere Transkripte mit niedrigerer Konfidenz für bessere Benutzerfreundlichkeit
+                if confidence > 0.1:  # Mindest-Konfidenz von 10%
                     return transcript.strip()
                 else:
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"Transkription hat zu niedrige Konfidenz: {confidence:.2f}. Bitte sprechen Sie deutlicher."
-                    )
+                    # Bei sehr niedriger Konfidenz trotzdem versuchen, aber mit Warnung
+                    print(f"Warnung: Sehr niedrige Konfidenz ({confidence:.2f}), aber Transkript wird trotzdem zurückgegeben")
+                    return transcript.strip()
             else:
                 raise HTTPException(
                     status_code=400, 
