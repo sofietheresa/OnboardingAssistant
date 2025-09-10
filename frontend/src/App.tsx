@@ -14,12 +14,14 @@ const App: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
+  const API_BASE_URL = "https://boardy-backend-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud";
   const locationById = LOCATIONS.reduce((map, location) => {
     map[location.id] = location;
     return map;
   }, {} as Record<string, Location>);
-
+  // The OnboardingScreen component is imported from './components/OnboardingScreen'
+  // Its file path is:
+  // /Users/furkansaygin/Documents/Master/AI Labs/OnboardingAssistant/frontend/src/components/OnboardingScreen.tsx
   const handleChooseLocation = (id: string) => {
     setSelectedLocation(locationById[id]);
     setMessages([
@@ -34,8 +36,9 @@ const App: React.FC = () => {
 
   // Load locations from backend if available (keeps UI in sync)
   useEffect(() => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
-    fetch(`${apiBaseUrl}/api/locations`).catch(() => {});
+    fetch(`${API_BASE_URL}/api/locations`).catch((err) => {
+        console.error("Failed to fetch locations:", err);
+    });
   }, []);
 
   const handleBackToOnboarding = () => {
@@ -57,8 +60,7 @@ const App: React.FC = () => {
     setIsLoading(true);
     
     // Send to backend (non-blocking, append response when returned)
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
-    fetch(`${apiBaseUrl}/v1/ask`, {
+    fetch(`${API_BASE_URL}/v1/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: text })
