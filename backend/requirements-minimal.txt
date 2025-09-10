@@ -1,0 +1,25 @@
+# Core FastAPI dependencies
+fastapi==0.112.2
+uvicorn[standard]==0.30.6
+pydantic==2.8.2
+pydantic-settings
+
+# Database dependencies
+psycopg[binary]>=3.1
+pgvector
+
+# Document processing
+pypdf
+python-docx
+
+# Environment and configuration
+python-dotenv
+
+# HTTP client for API calls
+httpx
+
+# IBM Watson services
+ibm-watson==7.0.1
+
+# Security
+cryptography

@@ -1,9 +1,12 @@
 from typing import List, Dict
+import logging
 from pgvector import Vector
 from .embeddings import get_watsonx_ai_embeddings
 from .db import get_conn
 
-SYSTEM_PROMPT = (
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = """
     # Boardy – Onboarding-Assistent
 
     ## Rolle
@@ -12,7 +15,7 @@ SYSTEM_PROMPT = (
 
     ## Regeln
     - Nutze nur RAG-Dokumente, passend zur Lokation.  
-    - Sprich die Nutzer:innen mit **„du“** an, locker aber professionell.  
+- Sprich die Nutzer:innen mit **"du"** an, locker aber professionell.  
     - Antworte **immer auf Deutsch**.  
     - Ergänze, wenn sinnvoll, kurze Tipps oder Zusatzinfos.  
     - Vermeide Geschwätzigkeit, bleibe klar und hilfreich.  
@@ -27,206 +30,197 @@ SYSTEM_PROMPT = (
     ## Fallbacks
     - **Unsicherheit:**  
     `Antwort: Da bin ich mir nicht sicher, aber ich kann dir die richtige Ansprechperson nennen.`  
-
     - **Keine Infos:**  
     `Antwort: Das weiß ich leider nicht. Bitte teile mir die Info oder ein Dokument, dann nehme ich es ins RAG auf.`  
 
     ## Gesprächsabschluss
-    (abwechselnd, ohne „Antwort:“ davor)  
-    - „War meine Antwort für dich hilfreich?“  
-    - „Gibt es noch etwas, wobei ich dich unterstützen kann?“  
+(abwechselnd, ohne "Antwort:" davor)  
+- "War meine Antwort für dich hilfreich?"  
+- "Gibt es noch etwas, wobei ich dich unterstützen kann?"  
 
     ## Ziel
     Neue Mitarbeitende sollen sich willkommen, ernst genommen und unterstützt fühlen.  
     Boardy ist Wissensquelle **und** persönliche Begleitung.  
-)
+"""
 
-def format_prompt(question: str, contexts: List[Dict]) -> str:
+
+async def get_relevant_documents(query: str, location = None, limit: int = 5) -> List[Dict]:
     """
-    Baut einen klaren Prompt mit den Top-K Kontext-Chunks.
+    Retrieves relevant documents from the database based on the query.
+    
+    Args:
+        query: The user's question
+        location: Optional location filter (Böblingen, München, UDG)
+        limit: Maximum number of documents to return
+    
+    Returns:
+        List of relevant documents with metadata
     """
-    lines = []
-    for c in contexts:
-        title = c["metadata"].get("filename") or c["doc_id"]
-        lines.append(f"[{title}#{c['chunk_id']}] {c['content']}")
-    ctx = "\n\n".join(lines[:8])  # maximal 8 Chunks
-
-    return (
-        f"FRAGE:\n{question}\n\n"
-        f"KONTEXT (verwende NUR Folgendes):\n{ctx}\n\n"
-        "ANTWORTFORMAT:\n"
-        "- knappe Antwort in Deutsch\n"
-        "- bei Prozessen: nummerierte Schritte\n"
-        "- Abschlusszeile: 'Quellen: <Titel#Chunk, ...>'\n"
-    )
-
-async def retrieve(query: str, k: int = 6) -> List[Dict]:
-    """Retrieve relevant documents from database using embeddings"""
     try:
-        embedder = get_watsonx_ai_embeddings()
-        q_raw = (await embedder.embed([query]))[0]  # -> List[float]
-        q_vec = Vector(q_raw)                       # ← WICHTIG: in pgvector.Vector wandeln
-
-        sql = """
-        SELECT id, doc_id, chunk_id, content, metadata
+        # Get query embedding
+        embeddings_service = get_watsonx_ai_embeddings()
+        try:
+            query_embedding = await embeddings_service.embed([query])
+            query_embedding = query_embedding[0]
+        except Exception as embed_error:
+            logger.error(f"Embeddings failed: {embed_error}")
+            # Return empty list if embeddings fail
+            return []
+        
+        # Convert to pgvector format
+        query_vector = Vector(query_embedding)
+        
+        conn = get_conn()
+        cursor = conn.cursor()
+        
+        # Build location filter
+        location_filter = ""
+        if location:
+            location_filter = f"AND location = '{location}'"
+        
+        # Query for similar documents
+        query_sql = f"""
+        SELECT 
+            id,
+            content,
+            metadata,
+            location,
+            source,
+            created_at,
+            embedding <-> %s AS distance
         FROM documents
-        ORDER BY embedding <=> %s
+        WHERE 1=1 {location_filter}
+        ORDER BY embedding <-> %s
         LIMIT %s
         """
-        with get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, (q_vec, k))
-                rows = cur.fetchall()
-                return rows
+        
+        cursor.execute(query_sql, (query_vector, query_vector, limit))
+        results = cursor.fetchall()
+        
+        documents = []
+        for row in results:
+            documents.append({
+                'id': row[0],
+                'content': row[1],
+                'metadata': row[2],
+                'location': row[3],
+                'source': row[4],
+                'created_at': row[5],
+                'distance': float(row[6])
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        return documents
+        
     except Exception as e:
-        # Fallback: return empty list if embeddings or database fails
-        print(f"Warning: RAG retrieval failed: {e}")
+        logger.error(f"Error retrieving documents: {e}")
         return []
 
-def is_smalltalk(question: str) -> bool:
-    """
-    Erkennt Smalltalk-Fragen basierend auf Kontext und Frageart, nicht nur Keywords.
-    """
-    question_lower = question.lower().strip()
-    words = question_lower.split()
-    
-    # 1. Sehr kurze Fragen (1-2 Wörter) sind meist Smalltalk
-    if len(words) <= 2:
-        # Ausnahme: W-Fragen können fachlich sein
-        w_questions = ["was", "wie", "wo", "wann", "warum", "wer", "welche", "welcher"]
-        if not any(word in words for word in w_questions):
-            return True
-    
-    # 2. Begrüßungen und Verabschiedungen
-    greetings = ["hallo", "hi", "hey", "guten", "servus", "moin", "tschüss", "bye", "auf wiedersehen", "ciao"]
-    if any(greeting in question_lower for greeting in greetings):
-        return True
-    
-    # 3. Persönliche Fragen über den Assistenten
-    personal_questions = [
-        "wer bist", "was bist", "wie heißt", "woher kommst", "wie alt", 
-        "wo wohnst", "hast du", "magst du", "kannst du", "bist du"
-    ]
-    if any(pq in question_lower for pq in personal_questions):
-        return True
-    
-    # 4. Emotionale/soziale Fragen
-    emotional_indicators = [
-        "wie geht", "wie gehts", "was machst", "was machst du", "danke", "bitte",
-        "lustig", "witzig", "spaß", "langweilig", "müde", "hungrig", "durstig", "krank"
-    ]
-    if any(ei in question_lower for ei in emotional_indicators):
-        return True
-    
-    # 5. Wetter und allgemeine Themen
-    general_topics = [
-        "wetter", "regen", "sonne", "schön", "schlecht", "wochenende", "urlaub", "feiern", "party"
-    ]
-    if any(gt in question_lower for gt in general_topics):
-        return True
-    
-    # 6. Fragen ohne fachlichen Kontext (keine Onboarding-relevanten Begriffe)
-    onboarding_keywords = [
-        "onboarding", "einstieg", "erste", "woche", "tag", "arbeit", "projekt", "team", "kollegen",
-        "hr", "personal", "urlaub", "kantine", "essen", "parken", "parkplatz", "it", "computer",
-        "laptop", "sicherheit", "schulung", "training", "lernen", "gehalt", "lohn", "bezahlung",
-        "vertrag", "arbeitsplatz", "büro", "meeting", "termin", "deadline", "kunde", "client",
-        "prozess", "workflow", "tool", "software", "system", "zugang", "berechtigung", "recht"
-    ]
-    
-    # Wenn keine Onboarding-relevanten Begriffe enthalten sind, ist es wahrscheinlich Smalltalk
-    if not any(keyword in question_lower for keyword in onboarding_keywords):
-        # Aber nur wenn es nicht eine echte Frage ist
-        question_indicators = ["was", "wie", "wo", "wann", "warum", "wer", "welche", "welcher", "kann", "soll", "muss"]
-        if not any(indicator in question_lower for indicator in question_indicators):
-            return True
-    
-    # 7. Sehr allgemeine Fragen ohne spezifischen Kontext
-    if len(words) <= 4 and not any(keyword in question_lower for keyword in onboarding_keywords):
-        return True
-    
-    return False
 
-def generate_simple_response(question: str, contexts: List[Dict] = None, location: Dict = None, chat_history: List[Dict] = None) -> str:
-    """Generate a simple response based on question and context"""
-    question_lower = question.lower().strip()
+def format_context(documents: List[Dict]) -> str:
+    """
+    Formats the retrieved documents into a context string for the LLM.
     
-    # Build location context
-    location_context = ""
-    if location:
-        location_context = f" (Standort: {location.get('name', 'unbekannt')})"
+    Args:
+        documents: List of relevant documents
     
-    # Build chat history context
-    chat_context = ""
-    if chat_history and len(chat_history) > 0:
-        # Take last 3 messages for context
-        recent_messages = chat_history[-3:]
-        chat_context = "\n\nBisheriger Gesprächsverlauf:\n"
-        for msg in recent_messages:
-            # Use generic labels instead of hardcoded names
-            speaker = "User" if msg.get('isUser', False) else "Assistant"
-            chat_context += f"{speaker}: {msg.get('text', '')}\n"
+    Returns:
+        Formatted context string
+    """
+    if not documents:
+        return "Keine relevanten Dokumente gefunden."
     
-    # Smalltalk responses
-    if is_smalltalk(question):
-        if any(greeting in question_lower for greeting in ["hallo", "hi", "hey", "guten"]):
-            return f"Hallo! Ich bin dein Onboarding-Assistent{location_context}. Wie kann ich dir heute helfen?{chat_context}"
-        elif "wie geht" in question_lower:
-            return f"Mir geht es gut, danke der Nachfrage! Ich bin bereit, dir bei deinem Onboarding{location_context} zu helfen.{chat_context}"
-        elif "danke" in question_lower:
-            return f"Gerne geschehen! Gibt es noch etwas, wobei ich dir helfen kann?{chat_context}"
-        elif any(bye in question_lower for bye in ["tschüss", "bye", "auf wiedersehen"]):
-            return f"Auf Wiedersehen! Falls du noch Fragen hast, bin ich immer für dich da.{chat_context}"
-        else:
-            return f"Das ist eine interessante Frage! Ich bin hier, um dir beim Onboarding{location_context} zu helfen.{chat_context}"
+    context_parts = []
+    for i, doc in enumerate(documents, 1):
+        context_parts.append(f"""
+Dokument {i}:
+Quelle: {doc.get('source', 'Unbekannt')}
+Standort: {doc.get('location', 'Unbekannt')}
+Inhalt: {doc['content'][:500]}{'...' if len(doc['content']) > 500 else ''}
+""")
     
-    # Professional responses
-    if contexts and len(contexts) > 0:
-        # Build response with context
-        context_info = []
-        for c in contexts[:3]:  # Limit to top 3 contexts
-            title = c["metadata"].get("filename") or c["doc_id"]
-            context_info.append(f"[{title}#{c['chunk_id']}]")
-        
-        sources_text = ", ".join(context_info)
-        
-        return f"""Antwort: Basierend auf den verfügbaren Informationen{location_context} kann ich dir folgendes sagen: {question} - Die relevanten Details findest du in den bereitgestellten Dokumenten.
-Quelle: {sources_text}
-Tipp: Bei weiteren Fragen wende dich gerne an deinen Vorgesetzten oder die HR-Abteilung.
-Rückfrage: War meine Antwort für dich hilfreich?{chat_context}"""
-    
-    # Fallback for no context
-    return f"""Antwort: Das ist eine interessante Frage: '{question}'{location_context}. Leider kann ich in der aktuellen Version keine detaillierte Antwort geben.
-Quelle: nichts
-Tipp: Ich empfehle dir, dich an deinen Vorgesetzten, die HR-Abteilung oder deinen Mentor zu wenden.
-Rückfrage: Gibt es noch etwas, wobei ich dich unterstützen kann?{chat_context}"""
+    return "\n".join(context_parts)
 
-async def answer(question: str, location: Dict = None, chat_history: List[Dict] = None) -> Dict:
-    """Answer questions using RAG with local embeddings"""
+
+async def answer(question: str, location = None, conversation_history: List[Dict] = None) -> Dict:
+    """
+    Generates an answer using RAG (Retrieval-Augmented Generation).
     
-    # Prüfe ob es sich um Smalltalk handelt
-    if is_smalltalk(question):
-        # Für Smalltalk: Einfache Antwort ohne Kontext
-        output = generate_simple_response(question, location=location, chat_history=chat_history)
-        return {"answer": output, "sources": []}
+    Args:
+        question: The user's question
+        location: Optional location filter
+        conversation_history: Previous conversation messages
     
-    # Normale fachliche Antwort mit Kontextsuche
-    contexts = await retrieve(question, k=6)
-    
-    if contexts:
-        # Wenn relevante Dokumente gefunden wurden, verwende RAG
-        output = generate_simple_response(question, contexts, location=location, chat_history=chat_history)
+    Returns:
+        Dictionary containing the answer and metadata
+    """
+    try:
+        # Extract location ID if location is an object
+        location_id = None
+        if location:
+            if isinstance(location, dict):
+                location_id = location.get('id')
+            else:
+                location_id = location
         
-        sources = [
-            {
-                "title": c["metadata"].get("filename") or c["doc_id"],
-                "doc_id": c["doc_id"],
-                "chunk_id": c["chunk_id"],
+        # Get relevant documents
+        documents = await get_relevant_documents(question, location_id)
+        
+        # Check if we have any documents
+        if not documents:
+            return {
+                "answer": "Entschuldigung, ich konnte keine relevanten Informationen zu deiner Frage finden. Bitte versuche es mit einer anderen Formulierung oder wende dich an einen Kollegen.",
+                "sources": [],
+                "context": "",
+                "documents_found": 0
             }
-            for c in contexts
-        ]
-        return {"answer": output, "sources": sources}
-    else:
-        # Fallback: Einfache Antwort ohne Kontext
-        output = generate_simple_response(question, location=location, chat_history=chat_history)
-        return {"answer": output, "sources": []}
+        
+        # Format context
+        context = format_context(documents)
+        
+        # Build conversation history
+        history_text = ""
+        if conversation_history:
+            history_parts = []
+            for msg in conversation_history[-5:]:  # Last 5 messages
+                role = "Nutzer" if msg.get('role') == 'user' else "Boardy"
+                history_parts.append(f"{role}: {msg.get('content', '')}")
+            history_text = "\n".join(history_parts)
+        
+        # Create the prompt
+        prompt = f"""
+{SYSTEM_PROMPT}
+
+## Kontext aus RAG-Dokumenten:
+{context}
+
+## Gesprächsverlauf:
+{history_text if history_text else "Kein vorheriger Gesprächsverlauf."}
+
+## Aktuelle Frage:
+{question}
+
+Bitte beantworte die Frage basierend auf den bereitgestellten Dokumenten und dem Gesprächskontext.
+"""
+        
+        # For now, return a simple response
+        # In a real implementation, this would call the LLM
+        response = {
+            "answer": f"Antwort: Ich habe deine Frage '{question}' erhalten und suche in den verfügbaren Dokumenten nach relevanten Informationen.",
+            "sources": [doc.get('source', 'Unbekannt') for doc in documents],
+            "context": context,
+            "documents_found": len(documents)
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error in answer function: {str(e)}")
+        return {
+            "answer": "Entschuldigung, es ist ein technischer Fehler aufgetreten. Bitte versuche es später erneut oder wende dich an einen Administrator.",
+            "sources": [],
+            "context": "",
+            "documents_found": 0
+        }

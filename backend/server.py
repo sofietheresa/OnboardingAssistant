@@ -18,7 +18,7 @@ app = FastAPI(title="Boardy Onboarding Assistant API")
 # ---- CORS ----
 cors_origins_env = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:8000,"
+    "http://localhost:3000,http://localhost:5173,http://localhost:8080,"
     "https://boardy-frontend-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud",
 )
 allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
@@ -86,6 +86,10 @@ async def ask_rag(req: AskRequest):
     return AskResponse(**result)
 
 # ---- Speech to Text Endpoint ----
+@app.options("/api/speech-to-text")
+async def speech_to_text_options():
+    return {"message": "OK"}
+
 @app.post("/api/speech-to-text")
 async def speech_to_text(req: SpeechToTextRequest):
     import base64

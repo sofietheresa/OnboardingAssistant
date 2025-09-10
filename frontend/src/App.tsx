@@ -14,7 +14,7 @@ const App: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const API_BASE_URL = "https://boardy-backend-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud";
+  const API_BASE_URL = "http://localhost:8080";
   const locationById = LOCATIONS.reduce((map, location) => {
     map[location.id] = location;
     return map;

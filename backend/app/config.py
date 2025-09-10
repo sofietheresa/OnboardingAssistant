@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # watsonx.ai (optional for IBM Cloud deployment with local services)
     watsonx_api_key: Optional[str] = Field(None, description="WatsonX API key (optional for local deployment)")
+    watsonx_url: str = Field(default="https://us-south.ml.cloud.ibm.com", description="WatsonX base URL")
     watsonx_base_url: str = Field(default="https://us-south.ml.cloud.ibm.com", description="WatsonX base URL")
     embeddings_model_id: str = Field(default="ibm/granite-embedding-278m-multilingual", description="Embeddings model ID")
     llm_model_id: str = Field(default="ibm/granite-3-8b-instruct", description="LLM model ID")
@@ -36,7 +37,7 @@ class Settings(BaseSettings):
     text_to_speech_url: str = Field(default="https://api.eu-de.text-to-speech.watson.cloud.ibm.com", description="IBM Text to Speech service URL")
 
     # CORS
-    cors_origins: str = Field(default="http://localhost:5173,http://localhost:8000,https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud", description="CORS allowed origins")
+    cors_origins: str = Field(default="http://localhost:5173,http://localhost:8080,https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud", description="CORS allowed origins")
 
     # Server
     host: str = Field(default="0.0.0.0", description="Server host")
@@ -108,6 +109,7 @@ class Settings(BaseSettings):
         logger.info(f"Database URL: {self.get_safe_database_url()}")
         logger.info(f"WatsonX API Key: {mask_sensitive_data(self.watsonx_api_key) if self.watsonx_api_key else 'Not set (using local services)'}")
         logger.info(f"WatsonX Project ID: {mask_sensitive_data(self.watsonx_project_id) if self.watsonx_project_id else 'Not set'}")
+        logger.info(f"WatsonX URL: {self.watsonx_url}")
         logger.info(f"WatsonX Base URL: {self.watsonx_base_url}")
         logger.info(f"Embeddings Model: {self.embeddings_model_id}")
         logger.info(f"LLM Model: {self.llm_model_id}")

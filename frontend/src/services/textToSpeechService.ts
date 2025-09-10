@@ -16,7 +16,7 @@ class TextToSpeechService {
   private currentAudio: HTMLAudioElement | null = null;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
   }
 
   async synthesizeText(text: string, voice: string = "de-DE_BirgitVoice"): Promise<string> {

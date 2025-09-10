@@ -10,5 +10,6 @@ pydantic-settings
 sentence-transformers
 torch
 numpy
-ibm-watson==7.2.0
+ibm-watson==7.0.1
 httpx
+cryptography

@@ -1,22 +1,45 @@
-# --- Build ---
+# --- Build Stage ---
 FROM node:20-alpine AS build
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
 COPY tsconfig.json vite.config.ts ./
-COPY index.html ./index.html
+
+# Install dependencies
+RUN npm ci --no-audit --no-fund
+
+# Copy source code
+COPY index.html ./
 COPY src ./src
 COPY public ./public
-RUN npm ci --no-audit --no-fund
-# API-URL zur Buildzeit setzen
-#ARG VITE_BACKEND_URL
-#ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
+# Build arguments for environment variables
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
+# Build the application
 RUN npm run build
 
-# --- Runtime (static server) ---
-FROM node:20-alpine
-WORKDIR /app
-RUN npm i -g serve
-ENV PORT=8080
-COPY --from=build /app/build ./build
-# Wichtig: Shell-Form, damit $PORT expandiert
-CMD ["sh","-lc","serve -s build -l tcp://0.0.0.0:${PORT:-8080}"]
+# --- Production Stage ---
+FROM nginx:alpine AS production
+WORKDIR /usr/share/nginx/html
+
+# Install curl for health check
+RUN apk add --no-cache curl
+
+# Copy built files from build stage
+COPY --from=build /app/build .
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -81,7 +81,7 @@ Falls Sie ein lokales Backend verwenden möchten:
 1. **Backend-URL ändern** in `frontend/vite.config.ts`:
 ```typescript
 define: {
-  'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:8000')
+  'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:8080')
 }
 ```
 

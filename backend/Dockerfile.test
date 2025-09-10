@@ -1,4 +1,4 @@
-# ---------- Backend ----------
+# ---------- Backend Test Version (ohne ML Dependencies) ----------
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -12,9 +12,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Python Dependencies
+# Python Dependencies (ohne sentence-transformers und torch)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir \
+    fastapi==0.112.2 \
+    uvicorn[standard]==0.30.6 \
+    pydantic==2.8.2 \
+    psycopg[binary]>=3.1 \
+    python-dotenv \
+    pypdf \
+    python-docx \
+    pgvector \
+    pydantic-settings \
+    ibm-watson==7.0.1 \
+    httpx \
+    cryptography
 
 # Backend Source (inkl. allen app/ und ingest/ Modulen)
 COPY . .

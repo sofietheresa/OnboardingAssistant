@@ -1,5 +1,0 @@
-[33m5f523d5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m App optimization and cleanup - Frontend-Backend connection established - Code optimization and cleanup - Removed unused files and dependencies - Updated README with Windows/Linux instructions - Added setup scripts for easy deployment - Optimized bundle size and performance - Fixed CORS configuration - Streamlined project structure
-[33m2a561ad[m solve security issue
-[33mbffd466[m add document onboarding
-[33m3f1d458[m fix Dockerfile for deployment and add certificate for db
-[33m754b595[m voice input
