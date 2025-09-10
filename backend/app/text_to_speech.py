@@ -9,16 +9,13 @@ from .config import settings
 class TextToSpeechService:
     def __init__(self):
         # Watson Text to Speech Konfiguration
-        # Verwende separaten API Key für Text to Speech oder fallback auf WATSONX_API_KEY
-        self.api_key = settings.text_to_speech_api_key or settings.watsonx_api_key
+        # Verwende separaten API Key für Text to Speech
+        self.api_key = settings.text_to_speech_api_key
         self.service_url = settings.text_to_speech_url
         
         # Prüfe ob API Key gültig ist (nicht Platzhalter)
         if not self.api_key or self.api_key == "your_text_to_speech_api_key_here":
-            if settings.watsonx_api_key and settings.watsonx_api_key != "your_watsonx_api_key_here":
-                self.api_key = settings.watsonx_api_key
-            else:
-                raise ValueError("TEXT_TO_SPEECH_API_KEY oder WATSONX_API_KEY environment variable is required")
+            raise ValueError("TEXT_TO_SPEECH_API_KEY environment variable is required for IBM Cloud deployment")
         
         # Authenticator und Service initialisieren
         authenticator = IAMAuthenticator(self.api_key)

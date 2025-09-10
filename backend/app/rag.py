@@ -1,6 +1,6 @@
 from typing import List, Dict
 from pgvector import Vector
-from .embeddings_local import get_local_embeddings
+from .embeddings import get_watsonx_ai_embeddings
 from .db import get_conn
 
 SYSTEM_PROMPT = (
@@ -61,9 +61,9 @@ def format_prompt(question: str, contexts: List[Dict]) -> str:
     )
 
 async def retrieve(query: str, k: int = 6) -> List[Dict]:
-    """Retrieve relevant documents from database using local embeddings"""
+    """Retrieve relevant documents from database using embeddings"""
     try:
-        embedder = get_local_embeddings()
+        embedder = get_watsonx_ai_embeddings()
         q_raw = (await embedder.embed([query]))[0]  # -> List[float]
         q_vec = Vector(q_raw)                       # ← WICHTIG: in pgvector.Vector wandeln
 

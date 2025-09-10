@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     database_url: str = Field(..., description="PostgreSQL database connection URL")
     ibm_pg_ca_cert: Optional[str] = Field(None, description="Base64-encoded IBM Cloud PostgreSQL SSL certificate")
 
-    # watsonx.ai
-    watsonx_api_key: str = Field(..., description="WatsonX API key")
+    # watsonx.ai (optional for IBM Cloud deployment with local services)
+    watsonx_api_key: Optional[str] = Field(None, description="WatsonX API key (optional for local deployment)")
     watsonx_base_url: str = Field(default="https://us-south.ml.cloud.ibm.com", description="WatsonX base URL")
     embeddings_model_id: str = Field(default="ibm/granite-embedding-278m-multilingual", description="Embeddings model ID")
     llm_model_id: str = Field(default="ibm/granite-3-8b-instruct", description="LLM model ID")
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     @validator('watsonx_api_key')
     def validate_api_key(cls, v):
-        if not SecurityValidator.validate_api_key(v):
+        if v and not SecurityValidator.validate_api_key(v):
             raise ValueError('Invalid WatsonX API key format')
         return v
 
@@ -106,7 +106,7 @@ class Settings(BaseSettings):
         """Log configuration with masked sensitive data"""
         logger.info("=== Application Configuration ===")
         logger.info(f"Database URL: {self.get_safe_database_url()}")
-        logger.info(f"WatsonX API Key: {mask_sensitive_data(self.watsonx_api_key)}")
+        logger.info(f"WatsonX API Key: {mask_sensitive_data(self.watsonx_api_key) if self.watsonx_api_key else 'Not set (using local services)'}")
         logger.info(f"WatsonX Project ID: {mask_sensitive_data(self.watsonx_project_id) if self.watsonx_project_id else 'Not set'}")
         logger.info(f"WatsonX Base URL: {self.watsonx_base_url}")
         logger.info(f"Embeddings Model: {self.embeddings_model_id}")
