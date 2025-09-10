@@ -1,17 +1,44 @@
 from typing import List, Dict
 from pgvector import Vector
-from .embeddings import WatsonxAIEmbeddings
-from .llm import WatsonxAILLM
+from .embeddings_local import get_local_embeddings
 from .db import get_conn
 
 SYSTEM_PROMPT = (
-    "Du bist Boardy, ein freundlicher Onboarding-Assistent der Firma. "
-    "Du kannst sowohl Smalltalk führen als auch fachliche Fragen beantworten. "
-    "Antworte kurz, korrekt und freundlich auf Deutsch. "
-    "Bei fachlichen Fragen nutze ausschließlich die bereitgestellten Kontexte. "
-    "Bei Smalltalk oder allgemeinen Fragen antworte natürlich und hilfsbereit. "
-    "Wenn du unsicher bist, sage dies klar und schlage einen Eskalationsweg vor. "
-    "Bei fachlichen Antworten nenne immer die Quellen (Titel#Chunk)."
+    # Boardy – Onboarding-Assistent
+
+    ## Rolle
+    Du bist **Boardy**, der Onboarding-Assistent für neue Mitarbeitende bei IBM Böblingen, IBM München und der UDG Ludwigsburg.  
+    Du begleitest sie freundlich, kompetent, empathisch und hilfreich.  
+
+    ## Regeln
+    - Nutze nur RAG-Dokumente, passend zur Lokation.  
+    - Sprich die Nutzer:innen mit **„du“** an, locker aber professionell.  
+    - Antworte **immer auf Deutsch**.  
+    - Ergänze, wenn sinnvoll, kurze Tipps oder Zusatzinfos.  
+    - Vermeide Geschwätzigkeit, bleibe klar und hilfreich.  
+    - Berücksichtige den bisherigen Gesprächskontext.  
+
+    ## Antwortformat (immer gleich)
+    Antwort: <klare, hilfreiche Antwort>
+    Quelle: <Dokument/Link>/nichts
+    Tipp: <ergänzende Info oder kleiner Hinweis>
+    Rückfrage: <lockere Rückfrage zur Gesprächsatmosphäre>
+
+    ## Fallbacks
+    - **Unsicherheit:**  
+    `Antwort: Da bin ich mir nicht sicher, aber ich kann dir die richtige Ansprechperson nennen.`  
+
+    - **Keine Infos:**  
+    `Antwort: Das weiß ich leider nicht. Bitte teile mir die Info oder ein Dokument, dann nehme ich es ins RAG auf.`  
+
+    ## Gesprächsabschluss
+    (abwechselnd, ohne „Antwort:“ davor)  
+    - „War meine Antwort für dich hilfreich?“  
+    - „Gibt es noch etwas, wobei ich dich unterstützen kann?“  
+
+    ## Ziel
+    Neue Mitarbeitende sollen sich willkommen, ernst genommen und unterstützt fühlen.  
+    Boardy ist Wissensquelle **und** persönliche Begleitung.  
 )
 
 def format_prompt(question: str, contexts: List[Dict]) -> str:
@@ -34,77 +61,156 @@ def format_prompt(question: str, contexts: List[Dict]) -> str:
     )
 
 async def retrieve(query: str, k: int = 6) -> List[Dict]:
-    embedder = WatsonxAIEmbeddings()
-    q_raw = (await embedder.embed([query]))[0]  # -> List[float]
-    q_vec = Vector(q_raw)                       # ← WICHTIG: in pgvector.Vector wandeln
+    """Retrieve relevant documents from database using local embeddings"""
+    try:
+        embedder = get_local_embeddings()
+        q_raw = (await embedder.embed([query]))[0]  # -> List[float]
+        q_vec = Vector(q_raw)                       # ← WICHTIG: in pgvector.Vector wandeln
 
-    sql = """
-    SELECT id, doc_id, chunk_id, content, metadata
-    FROM documents
-    ORDER BY embedding <=> %s
-    LIMIT %s
-    """
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, (q_vec, k))
-            rows = cur.fetchall()
-            return rows
+        sql = """
+        SELECT id, doc_id, chunk_id, content, metadata
+        FROM documents
+        ORDER BY embedding <=> %s
+        LIMIT %s
+        """
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (q_vec, k))
+                rows = cur.fetchall()
+                return rows
+    except Exception as e:
+        # Fallback: return empty list if embeddings or database fails
+        print(f"Warning: RAG retrieval failed: {e}")
+        return []
 
 def is_smalltalk(question: str) -> bool:
     """
-    Erkennt Smalltalk-Fragen basierend auf Schlüsselwörtern und Mustern.
+    Erkennt Smalltalk-Fragen basierend auf Kontext und Frageart, nicht nur Keywords.
     """
-    smalltalk_keywords = [
-        "hallo", "hi", "hey", "guten tag", "guten morgen", "guten abend",
-        "wie geht", "wie gehts", "was machst", "was machst du",
-        "danke", "bitte", "tschüss", "auf wiedersehen", "bye",
-        "wie heißt", "wer bist", "was bist", "woher kommst",
-        "schönes wetter", "schlecht wetter", "regen", "sonne",
-        "wie alt", "wo wohnst", "hast du", "magst du",
-        "lustig", "witzig", "spaß", "langweilig",
-        "müde", "hungrig", "durstig", "krank",
-        "wochenende", "urlaub", "feiern", "party"
-    ]
-    
     question_lower = question.lower().strip()
+    words = question_lower.split()
     
-    # Prüfe auf direkte Smalltalk-Keywords
-    for keyword in smalltalk_keywords:
-        if keyword in question_lower:
+    # 1. Sehr kurze Fragen (1-2 Wörter) sind meist Smalltalk
+    if len(words) <= 2:
+        # Ausnahme: W-Fragen können fachlich sein
+        w_questions = ["was", "wie", "wo", "wann", "warum", "wer", "welche", "welcher"]
+        if not any(word in words for word in w_questions):
             return True
     
-    # Prüfe auf sehr kurze Fragen (oft Smalltalk)
-    if len(question_lower.split()) <= 2 and not any(word in question_lower for word in ["was", "wie", "wo", "wann", "warum", "wer"]):
+    # 2. Begrüßungen und Verabschiedungen
+    greetings = ["hallo", "hi", "hey", "guten", "servus", "moin", "tschüss", "bye", "auf wiedersehen", "ciao"]
+    if any(greeting in question_lower for greeting in greetings):
         return True
     
-    # Prüfe auf Begrüßungen
-    if any(greeting in question_lower for greeting in ["hallo", "hi", "hey", "guten"]):
+    # 3. Persönliche Fragen über den Assistenten
+    personal_questions = [
+        "wer bist", "was bist", "wie heißt", "woher kommst", "wie alt", 
+        "wo wohnst", "hast du", "magst du", "kannst du", "bist du"
+    ]
+    if any(pq in question_lower for pq in personal_questions):
+        return True
+    
+    # 4. Emotionale/soziale Fragen
+    emotional_indicators = [
+        "wie geht", "wie gehts", "was machst", "was machst du", "danke", "bitte",
+        "lustig", "witzig", "spaß", "langweilig", "müde", "hungrig", "durstig", "krank"
+    ]
+    if any(ei in question_lower for ei in emotional_indicators):
+        return True
+    
+    # 5. Wetter und allgemeine Themen
+    general_topics = [
+        "wetter", "regen", "sonne", "schön", "schlecht", "wochenende", "urlaub", "feiern", "party"
+    ]
+    if any(gt in question_lower for gt in general_topics):
+        return True
+    
+    # 6. Fragen ohne fachlichen Kontext (keine Onboarding-relevanten Begriffe)
+    onboarding_keywords = [
+        "onboarding", "einstieg", "erste", "woche", "tag", "arbeit", "projekt", "team", "kollegen",
+        "hr", "personal", "urlaub", "kantine", "essen", "parken", "parkplatz", "it", "computer",
+        "laptop", "sicherheit", "schulung", "training", "lernen", "gehalt", "lohn", "bezahlung",
+        "vertrag", "arbeitsplatz", "büro", "meeting", "termin", "deadline", "kunde", "client",
+        "prozess", "workflow", "tool", "software", "system", "zugang", "berechtigung", "recht"
+    ]
+    
+    # Wenn keine Onboarding-relevanten Begriffe enthalten sind, ist es wahrscheinlich Smalltalk
+    if not any(keyword in question_lower for keyword in onboarding_keywords):
+        # Aber nur wenn es nicht eine echte Frage ist
+        question_indicators = ["was", "wie", "wo", "wann", "warum", "wer", "welche", "welcher", "kann", "soll", "muss"]
+        if not any(indicator in question_lower for indicator in question_indicators):
+            return True
+    
+    # 7. Sehr allgemeine Fragen ohne spezifischen Kontext
+    if len(words) <= 4 and not any(keyword in question_lower for keyword in onboarding_keywords):
         return True
     
     return False
 
+def generate_simple_response(question: str, contexts: List[Dict] = None) -> str:
+    """Generate a simple response based on question and context"""
+    question_lower = question.lower().strip()
+    
+    # Smalltalk responses
+    if is_smalltalk(question):
+        if any(greeting in question_lower for greeting in ["hallo", "hi", "hey", "guten"]):
+            return "Hallo! Ich bin Boardy, dein Onboarding-Assistent. Wie kann ich dir heute helfen?"
+        elif "wie geht" in question_lower:
+            return "Mir geht es gut, danke der Nachfrage! Ich bin bereit, dir bei deinem Onboarding zu helfen."
+        elif "danke" in question_lower:
+            return "Gerne geschehen! Gibt es noch etwas, wobei ich dir helfen kann?"
+        elif any(bye in question_lower for bye in ["tschüss", "bye", "auf wiedersehen"]):
+            return "Auf Wiedersehen! Falls du noch Fragen hast, bin ich immer für dich da."
+        else:
+            return "Das ist eine interessante Frage! Ich bin hier, um dir beim Onboarding zu helfen."
+    
+    # Professional responses
+    if contexts and len(contexts) > 0:
+        # Build response with context
+        context_info = []
+        for c in contexts[:3]:  # Limit to top 3 contexts
+            title = c["metadata"].get("filename") or c["doc_id"]
+            context_info.append(f"[{title}#{c['chunk_id']}]")
+        
+        sources_text = ", ".join(context_info)
+        
+        return f"""Antwort: Basierend auf den verfügbaren Informationen kann ich dir folgendes sagen: {question} - Die relevanten Details findest du in den bereitgestellten Dokumenten.
+Quelle: {sources_text}
+Tipp: Bei weiteren Fragen wende dich gerne an deinen Vorgesetzten oder die HR-Abteilung.
+Rückfrage: War meine Antwort für dich hilfreich?"""
+    
+    # Fallback for no context
+    return f"""Antwort: Das ist eine interessante Frage: '{question}'. Leider kann ich in der aktuellen Version keine detaillierte Antwort geben.
+Quelle: nichts
+Tipp: Ich empfehle dir, dich an deinen Vorgesetzten, die HR-Abteilung oder deinen Mentor zu wenden.
+Rückfrage: Gibt es noch etwas, wobei ich dich unterstützen kann?"""
+
 async def answer(question: str) -> Dict:
+    """Answer questions using RAG with local embeddings"""
+    
     # Prüfe ob es sich um Smalltalk handelt
     if is_smalltalk(question):
-        # Für Smalltalk keine Kontextsuche, direkte Antwort
-        llm = WatsonxAILLM()
-        smalltalk_prompt = f"Du bist Boardy, ein freundlicher Onboarding-Assistent. Antworte auf diese Smalltalk-Frage natürlich und hilfsbereit auf Deutsch: {question}"
-        output = await llm.generate(SYSTEM_PROMPT, smalltalk_prompt)
+        # Für Smalltalk: Einfache Antwort ohne Kontext
+        output = generate_simple_response(question)
         return {"answer": output, "sources": []}
     
     # Normale fachliche Antwort mit Kontextsuche
     contexts = await retrieve(question, k=6)
-    prompt = format_prompt(question, contexts)
-
-    llm = WatsonxAILLM()
-    output = await llm.generate(SYSTEM_PROMPT, prompt)
-
-    sources = [
-        {
-            "title": c["metadata"].get("filename") or c["doc_id"],
-            "doc_id": c["doc_id"],
-            "chunk_id": c["chunk_id"],
-        }
-        for c in contexts
-    ]
-    return {"answer": output, "sources": sources}
+    
+    if contexts:
+        # Wenn relevante Dokumente gefunden wurden, verwende RAG
+        output = generate_simple_response(question, contexts)
+        
+        sources = [
+            {
+                "title": c["metadata"].get("filename") or c["doc_id"],
+                "doc_id": c["doc_id"],
+                "chunk_id": c["chunk_id"],
+            }
+            for c in contexts
+        ]
+        return {"answer": output, "sources": sources}
+    else:
+        # Fallback: Einfache Antwort ohne Kontext
+        output = generate_simple_response(question)
+        return {"answer": output, "sources": []}

@@ -7,4 +7,6 @@ pypdf
 python-docx
 pgvector
 pydantic-settings
-ibm-watson==7.2.0
+sentence-transformers
+torch
+numpy

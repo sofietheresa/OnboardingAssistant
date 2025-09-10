@@ -13,24 +13,26 @@ RUN npm run build
 FROM python:3.11-slim AS backend
 WORKDIR /app
 
-# System-CA-Zertifikate (wichtig für Postgres TLS) und System libs für psycopg2
+# System dependencies for PostgreSQL and build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libc6-dev \
     ca-certificates \
- && update-ca-certificates \
- && rm -rf /var/lib/apt/lists/*
-
-
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Python Dependencies
-COPY ./requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy frontend build from previous stage
+COPY --from=frontend-build /app/frontend/build ./frontend/build
 
 # Backend Source (inkl. allen app/ und ingest/ Modulen)
-COPY ./ .
+COPY . .
 
-# Expose (Info, Code Engine nimmt $PORT)
-ENV PORT=8000
-CMD ["bash","-lc","uvicorn server:app --host 0.0.0.0 --port ${PORT}"]
+# IBM Cloud Code Engine configuration
+ENV PORT=8080
+EXPOSE 8080
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080"]
