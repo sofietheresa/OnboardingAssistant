@@ -76,12 +76,14 @@ class WatsonxAIEmbeddings:
     async def _embed_watsonx(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using WatsonX (original implementation)"""
         try:
-            token_manager = self.get_token()
             import httpx
             import json
             
+            # Get token properly (await the coroutine)
+            token = await self.token_manager.get_token()
+            
             headers = {
-                "Authorization": f"Bearer {token_manager.get_token()}",
+                "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json"
             }
             
