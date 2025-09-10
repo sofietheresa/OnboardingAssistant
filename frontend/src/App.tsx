@@ -59,11 +59,23 @@ const App: React.FC = () => {
     setMessages((prev) => [...prev, newMessage]);
     setIsLoading(true);
     
+    // Prepare chat history for backend (exclude the current message we just added)
+    const chatHistory = messages.map(msg => ({
+      id: msg.id,
+      text: msg.text,
+      isUser: msg.isUser,
+      timestamp: msg.timestamp.toISOString()
+    }));
+    
     // Send to backend (non-blocking, append response when returned)
     fetch(`${API_BASE_URL}/v1/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: text })
+      body: JSON.stringify({ 
+        query: text,
+        location: selectedLocation,
+        chatHistory: chatHistory
+      })
     })
       .then((r) => r.json())
       .then((data) => {

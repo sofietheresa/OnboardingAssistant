@@ -82,7 +82,7 @@ async def list_locations():
 # ---- Chat über RAG (neuer Endpoint) ----
 @app.post("/v1/ask", response_model=AskResponse)
 async def ask_rag(req: AskRequest):
-    result = await rag_answer(req.query)
+    result = await rag_answer(req.query, req.location, req.chatHistory)
     return AskResponse(**result)
 
 # ---- Speech to Text Endpoint ----

@@ -147,22 +147,38 @@ def is_smalltalk(question: str) -> bool:
     
     return False
 
-def generate_simple_response(question: str, contexts: List[Dict] = None) -> str:
+def generate_simple_response(question: str, contexts: List[Dict] = None, location: Dict = None, chat_history: List[Dict] = None) -> str:
     """Generate a simple response based on question and context"""
     question_lower = question.lower().strip()
+    
+    # Build location context
+    location_context = ""
+    if location:
+        location_context = f" (Standort: {location.get('name', 'unbekannt')})"
+    
+    # Build chat history context
+    chat_context = ""
+    if chat_history and len(chat_history) > 0:
+        # Take last 3 messages for context
+        recent_messages = chat_history[-3:]
+        chat_context = "\n\nBisheriger Gesprächsverlauf:\n"
+        for msg in recent_messages:
+            # Use generic labels instead of hardcoded names
+            speaker = "User" if msg.get('isUser', False) else "Assistant"
+            chat_context += f"{speaker}: {msg.get('text', '')}\n"
     
     # Smalltalk responses
     if is_smalltalk(question):
         if any(greeting in question_lower for greeting in ["hallo", "hi", "hey", "guten"]):
-            return "Hallo! Ich bin Boardy, dein Onboarding-Assistent. Wie kann ich dir heute helfen?"
+            return f"Hallo! Ich bin dein Onboarding-Assistent{location_context}. Wie kann ich dir heute helfen?{chat_context}"
         elif "wie geht" in question_lower:
-            return "Mir geht es gut, danke der Nachfrage! Ich bin bereit, dir bei deinem Onboarding zu helfen."
+            return f"Mir geht es gut, danke der Nachfrage! Ich bin bereit, dir bei deinem Onboarding{location_context} zu helfen.{chat_context}"
         elif "danke" in question_lower:
-            return "Gerne geschehen! Gibt es noch etwas, wobei ich dir helfen kann?"
+            return f"Gerne geschehen! Gibt es noch etwas, wobei ich dir helfen kann?{chat_context}"
         elif any(bye in question_lower for bye in ["tschüss", "bye", "auf wiedersehen"]):
-            return "Auf Wiedersehen! Falls du noch Fragen hast, bin ich immer für dich da."
+            return f"Auf Wiedersehen! Falls du noch Fragen hast, bin ich immer für dich da.{chat_context}"
         else:
-            return "Das ist eine interessante Frage! Ich bin hier, um dir beim Onboarding zu helfen."
+            return f"Das ist eine interessante Frage! Ich bin hier, um dir beim Onboarding{location_context} zu helfen.{chat_context}"
     
     # Professional responses
     if contexts and len(contexts) > 0:
@@ -174,24 +190,24 @@ def generate_simple_response(question: str, contexts: List[Dict] = None) -> str:
         
         sources_text = ", ".join(context_info)
         
-        return f"""Antwort: Basierend auf den verfügbaren Informationen kann ich dir folgendes sagen: {question} - Die relevanten Details findest du in den bereitgestellten Dokumenten.
+        return f"""Antwort: Basierend auf den verfügbaren Informationen{location_context} kann ich dir folgendes sagen: {question} - Die relevanten Details findest du in den bereitgestellten Dokumenten.
 Quelle: {sources_text}
 Tipp: Bei weiteren Fragen wende dich gerne an deinen Vorgesetzten oder die HR-Abteilung.
-Rückfrage: War meine Antwort für dich hilfreich?"""
+Rückfrage: War meine Antwort für dich hilfreich?{chat_context}"""
     
     # Fallback for no context
-    return f"""Antwort: Das ist eine interessante Frage: '{question}'. Leider kann ich in der aktuellen Version keine detaillierte Antwort geben.
+    return f"""Antwort: Das ist eine interessante Frage: '{question}'{location_context}. Leider kann ich in der aktuellen Version keine detaillierte Antwort geben.
 Quelle: nichts
 Tipp: Ich empfehle dir, dich an deinen Vorgesetzten, die HR-Abteilung oder deinen Mentor zu wenden.
-Rückfrage: Gibt es noch etwas, wobei ich dich unterstützen kann?"""
+Rückfrage: Gibt es noch etwas, wobei ich dich unterstützen kann?{chat_context}"""
 
-async def answer(question: str) -> Dict:
+async def answer(question: str, location: Dict = None, chat_history: List[Dict] = None) -> Dict:
     """Answer questions using RAG with local embeddings"""
     
     # Prüfe ob es sich um Smalltalk handelt
     if is_smalltalk(question):
         # Für Smalltalk: Einfache Antwort ohne Kontext
-        output = generate_simple_response(question)
+        output = generate_simple_response(question, location=location, chat_history=chat_history)
         return {"answer": output, "sources": []}
     
     # Normale fachliche Antwort mit Kontextsuche
@@ -199,7 +215,7 @@ async def answer(question: str) -> Dict:
     
     if contexts:
         # Wenn relevante Dokumente gefunden wurden, verwende RAG
-        output = generate_simple_response(question, contexts)
+        output = generate_simple_response(question, contexts, location=location, chat_history=chat_history)
         
         sources = [
             {
@@ -212,5 +228,5 @@ async def answer(question: str) -> Dict:
         return {"answer": output, "sources": sources}
     else:
         # Fallback: Einfache Antwort ohne Kontext
-        output = generate_simple_response(question)
+        output = generate_simple_response(question, location=location, chat_history=chat_history)
         return {"answer": output, "sources": []}
