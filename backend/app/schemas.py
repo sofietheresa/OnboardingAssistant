@@ -13,3 +13,11 @@ class Source(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     sources: List[Source]
+
+class SpeechToTextRequest(BaseModel):
+    audio_data: str  # Base64 encoded audio data
+    content_type: str  # MIME type of the audio
+
+class TextToSpeechRequest(BaseModel):
+    text: str
+    voice: Optional[str] = "en-US_AllisonV3Voice"  # Default voice
