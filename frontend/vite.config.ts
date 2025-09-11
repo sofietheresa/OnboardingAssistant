@@ -20,7 +20,7 @@ export default defineConfig({
     strictPort: true
   },
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud')
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://boardy-backend-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud/')
   }
 });
 
