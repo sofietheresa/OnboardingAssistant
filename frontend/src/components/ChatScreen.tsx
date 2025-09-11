@@ -64,7 +64,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       };
 
       // Timer für Aufnahmedauer
-      let timer: NodeJS.Timeout;
+      let timer: ReturnType<typeof setInterval>;
       
       mediaRecorder.onstop = async () => {
         clearInterval(timer);

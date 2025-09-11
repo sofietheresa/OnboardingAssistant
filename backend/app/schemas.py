@@ -15,8 +15,8 @@ class AskResponse(BaseModel):
     sources: List[Source]
 
 class SpeechToTextRequest(BaseModel):
-    audio_data: str  # Base64 encoded audio data
-    content_type: str  # MIME type of the audio
+    audio_data: str  # Base64-encoded audio data
+    content_type: str
 
 class TextToSpeechRequest(BaseModel):
     text: str
