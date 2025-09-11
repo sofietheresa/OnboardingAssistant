@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 # RAG-Module
-from app.schemas import AskRequest, AskResponse
+from app.schemas import AskRequest, AskResponse, SpeechToTextRequest
 from app.rag import answer as rag_answer
 
 from app.speech_to_text import get_speech_to_text_service

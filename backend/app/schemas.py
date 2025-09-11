@@ -13,3 +13,7 @@ class Source(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     sources: List[Source]
+
+class SpeechToTextRequest(BaseModel):
+    audio_data: str  # Base64-encoded audio data
+    content_type: str
