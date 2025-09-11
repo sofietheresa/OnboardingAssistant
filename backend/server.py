@@ -11,6 +11,9 @@ from pydantic import BaseModel
 from app.schemas import AskRequest, AskResponse
 from app.rag import answer as rag_answer
 
+from app.speech_to_text import get_speech_to_text_service
+from app.text_to_speech import get_text_to_speech_service
+
 app = FastAPI(title="Boardy Onboarding Assistant API")
 
 # ---- CORS ----
@@ -71,6 +74,53 @@ async def ask_rag(req: AskRequest):
     result = await rag_answer(req.query)
     return AskResponse(**result)
 
+
+# ---- Speech to Text Endpoint ----
+@app.options("/api/speech-to-text")
+async def speech_to_text_options():
+    return {"message": "OK"}
+
+@app.post("/api/speech-to-text")
+async def speech_to_text(req: SpeechToTextRequest):
+    import base64
+    
+    try:
+        # Base64-Daten dekodieren
+        audio_data = base64.b64decode(req.audio_data)
+        
+        # Speech to Text Service
+        speech_service = get_speech_to_text_service()
+        transcript = await speech_service.transcribe_audio(audio_data, req.content_type)
+        
+        return {
+            'transcript': transcript,
+            'confidence': 1.0,  # Confidence wird in speech_to_text.py nicht zurückgegeben
+            'success': True
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Speech to Text Fehler: {str(e)}")
+
+# ---- Text to Speech Endpoint ----
+@app.post("/api/text-to-speech")
+async def text_to_speech(req: TextToSpeechRequest):
+    from fastapi.responses import Response
+    
+    try:
+        # Text to Speech Service verwenden
+        tts_service = get_text_to_speech_service()
+        audio_data = await tts_service.synthesize_text(req.text, req.voice)
+        
+        return Response(
+            content=audio_data,
+            media_type="audio/wav",
+            headers={"Content-Disposition": "inline; filename=speech.wav"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Text to Speech Fehler: {str(e)}")
+
+
 # ---- Frontend ausliefern ----
 @app.get("/")
 async def serve_frontend():
@@ -88,6 +138,8 @@ async def serve_static(path: str):
     if index_file.exists():
         return FileResponse(str(index_file))
     raise HTTPException(status_code=404, detail="Not found")
+
+
 
 if __name__ == "__main__":
     import uvicorn

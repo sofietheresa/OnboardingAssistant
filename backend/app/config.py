@@ -19,4 +19,13 @@ class Settings(BaseSettings):
         extra="ignore",         # ignoriere unbekannte ENV Variablen
     )
 
+    # Speech to Text
+    speech_to_text_api_key: Optional[str] = Field(None, description="IBM Speech to Text API key")
+    speech_to_text_url: str = Field(default="https://api.eu-de.speech-to-text.watson.cloud.ibm.com", description="IBM Speech to Text service URL")
+
+    # Text to Speech
+    text_to_speech_api_key: Optional[str] = Field(None, description="IBM Text to Speech API key")
+    text_to_speech_url: str = Field(default="https://api.eu-de.text-to-speech.watson.cloud.ibm.com", description="IBM Text to Speech service URL")
+
+
 settings = Settings()
