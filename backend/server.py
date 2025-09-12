@@ -150,7 +150,7 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
     # Datei temporär speichern
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         shutil.copyfileobj(file.file, tmp)
-        tmp_path = tmp.name
+        tmp_path = Path(tmp.name)  # Ensure tmp_path is a Path object
 
     # Dokument laden und in Chunks splitten
     docs = list(load_documents([tmp_path]))
