@@ -163,7 +163,28 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
 
     # Kontext für diese Anfrage zusammenbauen
     context_texts = [r["content"] for r in records]
-    context = "\n\n".join(context_texts[:8])
+
+    # --- ECHTE TOKENZÄHLUNG (OpenAI-like) ---
+    def count_tokens(text):
+        # Einfache Heuristik: whitespace split (besser: tiktoken, transformers, o.ä.)
+        return len(text.split())
+
+    max_tokens = 510  # IBM Granite: 512, etwas Reserve für Prompt
+    context = ""
+    token_count = 0
+    for chunk in context_texts:
+        chunk_tokens = count_tokens(chunk)
+        if token_count + chunk_tokens > max_tokens:
+          
+            allowed = max_tokens - token_count
+            words = chunk.split()
+            context += " " + " ".join(words[:allowed])
+            break
+        else:
+            context += "\n\n" + chunk
+            token_count += chunk_tokens
+
+    context = context.strip()
     # Prompt bauen wie in rag.py
     prompt = (
         f"FRAGE:\n{query}\n\n"
