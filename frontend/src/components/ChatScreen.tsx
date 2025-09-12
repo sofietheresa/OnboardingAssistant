@@ -283,8 +283,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           type: selectedFile.type,
           url: URL.createObjectURL(selectedFile),
         });
-      
-        onSendMessage(data.answer);
+        // Bot-Antwort als Assistant-Message mit Quellen anzeigen
+        onSendMessage(data.answer, undefined, undefined, false, data.sources);
       } else {
         alert('Keine Antwort erhalten.');
       }
