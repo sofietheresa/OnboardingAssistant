@@ -1,11 +1,12 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+import shutil
 
 # RAG-Module
 from app.schemas import AskRequest, AskResponse, SpeechToTextRequest, TextToSpeechRequest
@@ -15,6 +16,9 @@ from app.speech_to_text import get_speech_to_text_service
 from app.text_to_speech import get_text_to_speech_service
 
 app = FastAPI(title="Boardy Onboarding Assistant API")
+
+UPLOAD_DIR = Path(__file__).parent.parent / "uploaded_files"
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 # ---- CORS ----
 cors_origins_env = os.getenv(
@@ -119,6 +123,37 @@ async def text_to_speech(req: TextToSpeechRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Text to Speech Fehler: {str(e)}")
+
+
+# ---- File Upload Endpoint ----
+@app.post("/api/upload-file")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        file_path = UPLOAD_DIR / file.filename
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return {"filename": file.filename, "success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload fehlgeschlagen: {str(e)}")
+
+@app.post("/api/ingest-uploaded-file")
+async def ingest_uploaded_file(filename: str = Form(...)):
+    import subprocess
+    file_path = UPLOAD_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    # Lege temporäres Verzeichnis für Ingest an
+    import tempfile, shutil as sh
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_file = Path(tmpdir) / filename
+        sh.copy(file_path, tmp_file)
+        # Starte Ingest-Prozess
+        proc = subprocess.run([
+            "python", "-m", "ingest.ingest", tmpdir
+        ], capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Ingest-Fehler: {proc.stderr}")
+    return {"ingested": True, "filename": filename}
 
 
 # ---- Frontend ausliefern ----

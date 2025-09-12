@@ -19,6 +19,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showIngestPrompt, setShowIngestPrompt] = useState(false);
+  const [lastUploadedFilename, setLastUploadedFilename] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -188,22 +191,71 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() && !selectedFile) return;
-    
-    const fileAttachment = selectedFile ? {
-      name: selectedFile.name,
-      size: selectedFile.size,
-      type: selectedFile.type,
-      url: URL.createObjectURL(selectedFile)
-    } : undefined;
-    
+
+    if (selectedFile) {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      try {
+        const res = await fetch('/api/upload-file', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+          setLastUploadedFilename(data.filename);
+          setShowIngestPrompt(true);
+        } else {
+          alert('Dateiupload fehlgeschlagen.');
+        }
+      } catch (err) {
+        alert('Fehler beim Upload.');
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+
+    // Nur Textnachricht senden
     const messageText = inputValue.trim();
-    onSendMessage(messageText, fileAttachment);
-    
+    onSendMessage(messageText);
     setInputValue('');
+  };
+
+  const handleIngestConfirm = async () => {
+    if (!lastUploadedFilename) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('filename', lastUploadedFilename);
+    try {
+      const res = await fetch('/api/ingest-uploaded-file', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.ingested) {
+        alert('Datei wurde ins RAG aufgenommen.');
+      } else {
+        alert('Ingest fehlgeschlagen.');
+      }
+    } catch (err) {
+      alert('Fehler beim Ingest.');
+    } finally {
+      setShowIngestPrompt(false);
+      setUploading(false);
+      setSelectedFile(null);
+      setInputValue('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleIngestCancel = () => {
+    setShowIngestPrompt(false);
     setSelectedFile(null);
+    setInputValue('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -301,6 +353,18 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       </div>
     );
   };
+
+  if (showIngestPrompt) {
+    return (
+      <div className="ingest-prompt-modal">
+        <div className="ingest-prompt-content">
+          <p>Möchtest du die Datei <b>{lastUploadedFilename}</b> ins RAG aufnehmen?</p>
+          <button onClick={handleIngestConfirm} disabled={uploading}>Ja, aufnehmen</button>
+          <button onClick={handleIngestCancel} disabled={uploading}>Nein</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chat-container">
