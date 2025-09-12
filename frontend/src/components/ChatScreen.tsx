@@ -276,14 +276,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       });
       const data = await res.json();
       if (data.answer) {
+        // User-Frage als eigene Nachricht anzeigen
         onSendMessage(inputValue.trim(), {
           name: selectedFile.name,
           size: selectedFile.size,
           type: selectedFile.type,
           url: URL.createObjectURL(selectedFile),
         });
-        // Zeige die Antwort als neue Bot-Nachricht (optional: anpassen)
-        onSendMessage(data.answer, undefined, undefined, data.sources);
+      
+        onSendMessage(data.answer);
       } else {
         alert('Keine Antwort erhalten.');
       }
