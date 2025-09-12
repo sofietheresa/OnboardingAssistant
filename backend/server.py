@@ -136,6 +136,43 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload fehlgeschlagen: {str(e)}")
 
+@app.post("/api/ask-with-file")
+async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
+    """
+    Nutzt den Inhalt der hochgeladenen Datei als temporären Kontext für die aktuelle Frage,
+    ohne sie ins RAG aufzunehmen.
+    """
+    import tempfile
+    from ingest.loaders import load_documents
+    from ingest.chunker import split_into_chunks, to_records
+    from app.rag import answer as rag_answer
+
+    # Datei temporär speichern
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    # Dokument laden und in Chunks splitten
+    docs = list(load_documents([tmp_path]))
+    if not docs:
+        raise HTTPException(status_code=400, detail="Datei konnte nicht verarbeitet werden.")
+    chunks = split_into_chunks(docs[0]["text"])
+    records = to_records("temp_doc", chunks, docs[0]["metadata"])
+
+    # Kontext für diese Anfrage zusammenbauen
+    context_texts = [r["content"] for r in records]
+    context = "\n\n".join(context_texts[:8])
+    # Prompt bauen wie in rag.py
+    prompt = (
+        f"FRAGE:\n{query}\n\n"
+        f"KONTEXT (verwende NUR Folgendes):\n{context}\n\n"
+        "ANTWORTFORMAT:\n- knappe Antwort in Deutsch\n- bei Prozessen: nummerierte Schritte\n- Abschlusszeile: 'Quellen: <Datei>'\n"
+    )
+    # LLM aufrufen
+    result = await rag_answer(prompt)
+    return result
+
+
 @app.post("/api/ingest-uploaded-file")
 async def ingest_uploaded_file(filename: str = Form(...)):
     import subprocess

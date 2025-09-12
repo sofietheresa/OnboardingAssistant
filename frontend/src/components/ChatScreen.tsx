@@ -22,6 +22,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
   const [uploading, setUploading] = useState(false);
   const [showIngestPrompt, setShowIngestPrompt] = useState(false);
   const [lastUploadedFilename, setLastUploadedFilename] = useState<string | null>(null);
+  const [askWithFileMode, setAskWithFileMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -256,9 +257,45 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleIngestCancel = () => {
     setShowIngestPrompt(false);
-    setSelectedFile(null);
-    setInputValue('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setAskWithFileMode(true);
+    // Datei bleibt ausgewählt, damit sie für Fragen verwendet werden kann
+  };
+
+  const handleAskWithFile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || !selectedFile) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('query', inputValue.trim());
+    formData.append('file', selectedFile);
+    try {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${apiUrl}/api/ask-with-file`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.answer) {
+        onSendMessage(inputValue.trim(), {
+          name: selectedFile.name,
+          size: selectedFile.size,
+          type: selectedFile.type,
+          url: URL.createObjectURL(selectedFile),
+        });
+        // Zeige die Antwort als neue Bot-Nachricht (optional: anpassen)
+        onSendMessage(data.answer, undefined, undefined, data.sources);
+      } else {
+        alert('Keine Antwort erhalten.');
+      }
+    } catch (err) {
+      alert('Fehler bei der Anfrage mit Datei.');
+    } finally {
+      setUploading(false);
+      setAskWithFileMode(false);
+      setSelectedFile(null);
+      setInputValue('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handlePlusClick = () => {
@@ -363,6 +400,28 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           <p>Möchtest du die Datei <b>{lastUploadedFilename}</b> ins RAG aufnehmen?</p>
           <button onClick={handleIngestConfirm} disabled={uploading}>Ja, aufnehmen</button>
           <button onClick={handleIngestCancel} disabled={uploading}>Nein</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (askWithFileMode) {
+    return (
+      <div className="ask-with-file-modal">
+        <div className="ask-with-file-content">
+          <p>Stelle eine Frage zu <b>{selectedFile?.name}</b> (ohne Ingest ins RAG):</p>
+          <form onSubmit={handleAskWithFile}>
+            <textarea
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              placeholder="Deine Frage zum Dokument..."
+              className="message-input"
+              rows={2}
+              autoFocus
+            />
+            <button type="submit" disabled={uploading || !inputValue.trim()}>Frage stellen</button>
+            <button type="button" onClick={() => { setAskWithFileMode(false); setSelectedFile(null); setInputValue(''); }} disabled={uploading}>Abbrechen</button>
+          </form>
         </div>
       </div>
     );
