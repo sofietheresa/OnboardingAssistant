@@ -10,3 +10,4 @@ pydantic-settings
 httpx
 ibm-watson
 ibm-cloud-sdk-core
+python-multipart
