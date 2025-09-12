@@ -43,20 +43,26 @@ const App: React.FC = () => {
     setMessages([]);
   };
 
-  const handleSendMessage = (text: string, fileAttachment?: FileAttachment, audioAttachment?: AudioAttachment) => {
-    const newMessage: Message = {
-      id: crypto.randomUUID(),
-      text,
-      isUser: true,
-      timestamp: new Date(),
-      fileAttachment,
-      audioAttachment
-    };
-    
-    setMessages((prev) => [...prev, newMessage]);
+const handleSendMessage = (
+  text: string,
+  fileAttachment?: FileAttachment,
+  audioAttachment?: AudioAttachment,
+  isUser: boolean = true   // Default: User
+) => {
+  const newMessage: Message = {
+    id: crypto.randomUUID(),
+    text,
+    isUser,
+    timestamp: new Date(),
+    fileAttachment,
+    audioAttachment
+  };
+
+  setMessages((prev) => [...prev, newMessage]);
+
+  // Nur wenn User, dann Backend aufrufen
+  if (isUser) {
     setIsLoading(true);
-    
-    // Send to backend (non-blocking, append response when returned)
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
     fetch(`${apiBaseUrl}/v1/ask`, {
       method: 'POST',
@@ -65,26 +71,34 @@ const App: React.FC = () => {
     })
       .then((r) => r.json())
       .then((data) => {
-        setMessages((prev) => [...prev, { 
-          id: crypto.randomUUID(), 
-          text: data.answer, 
-          isUser: false, 
-          timestamp: new Date(),
-          sources: data.sources || []
-        }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            text: data.answer,
+            isUser: false,
+            timestamp: new Date(),
+            sources: data.sources || []
+          }
+        ]);
       })
       .catch(() => {
-        setMessages((prev) => [...prev, { 
-          id: crypto.randomUUID(), 
-          text: '(Fehler) Keine Antwort vom Server.', 
-          isUser: false, 
-          timestamp: new Date() 
-        }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            text: '(Fehler) Keine Antwort vom Server.',
+            isUser: false,
+            timestamp: new Date()
+          }
+        ]);
       })
       .finally(() => {
         setIsLoading(false);
       });
-  };
+  }
+};
+
 
   // Render onboarding when no location selected
   if (!selectedLocation) {
