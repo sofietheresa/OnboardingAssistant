@@ -106,7 +106,7 @@ async def answer(question: str) -> Dict:
     llm = WatsonxAILLM()
     output = await llm.generate(SYSTEM_PROMPT, prompt)
 
-     logger.info(f"Output: {output} )
+    logger.info(f"Output: {output} )
 
     sources = [
         {
