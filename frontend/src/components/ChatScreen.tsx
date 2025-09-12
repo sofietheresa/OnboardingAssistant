@@ -200,7 +200,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       const formData = new FormData();
       formData.append('file', selectedFile);
       try {
-        const res = await fetch('/api/upload-file', {
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+        const res = await fetch(`${apiUrl}/api/upload-file`, {
           method: 'POST',
           body: formData,
         });
@@ -231,7 +232,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     const formData = new FormData();
     formData.append('filename', lastUploadedFilename);
     try {
-      const res = await fetch('/api/ingest-uploaded-file', {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${apiUrl}/api/ingest-uploaded-file`, {
         method: 'POST',
         body: formData,
       });
