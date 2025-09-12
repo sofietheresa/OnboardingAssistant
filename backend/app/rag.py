@@ -6,6 +6,7 @@ from .llm import WatsonxAILLM
 from .db import get_conn
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 SYSTEM_PROMPT = (
     "Du bist Boardy, ein freundlicher Onboarding-Assistent der Firma. "
