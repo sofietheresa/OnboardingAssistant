@@ -1,8 +1,11 @@
 from typing import List, Dict
+import logging
 from pgvector import Vector
 from .embeddings import WatsonxAIEmbeddings
 from .llm import WatsonxAILLM
 from .db import get_conn
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "Du bist Boardy, ein freundlicher Onboarding-Assistent der Firma. "
@@ -34,6 +37,8 @@ def format_prompt(question: str, contexts: List[Dict]) -> str:
     )
 
 async def retrieve(query: str, k: int = 6) -> List[Dict]:
+    logger.info(f"Retrieving for: '{query}'")
+    
     embedder = WatsonxAIEmbeddings()
     q_raw = (await embedder.embed([query]))[0]  # -> List[float]
     q_vec = Vector(q_raw)                       # ← WICHTIG: in pgvector.Vector wandeln
@@ -48,7 +53,9 @@ async def retrieve(query: str, k: int = 6) -> List[Dict]:
         with conn.cursor() as cur:
             cur.execute(sql, (q_vec, k))
             rows = cur.fetchall()
-            return rows
+            logger.info(f"Found {len(rows)} documents")
+            # Konvertiere Tuples zu Dicts
+            return [dict(row) for row in rows]
 
 def is_smalltalk(question: str) -> bool:
     """
@@ -99,6 +106,8 @@ async def answer(question: str) -> Dict:
     llm = WatsonxAILLM()
     output = await llm.generate(SYSTEM_PROMPT, prompt)
 
+     logger.info(f"Output: {output} )
+
     sources = [
         {
             "title": c["metadata"].get("filename") or c["doc_id"],
@@ -107,4 +116,5 @@ async def answer(question: str) -> Dict:
         }
         for c in contexts
     ]
+    logger.info(f"Created {len(sources)} sources")
     return {"answer": output, "sources": sources}
