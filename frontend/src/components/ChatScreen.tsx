@@ -261,59 +261,56 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
     // Datei bleibt ausgewählt, damit sie für Fragen verwendet werden kann
   };
 
-const handleAskWithFile = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!inputValue.trim() || !selectedFile) return;
-  setUploading(true);
+  const handleAskWithFile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim() || !selectedFile) return;
+    setUploading(true);
 
-  const formData = new FormData();
-  formData.append('query', inputValue.trim());
-  formData.append('file', selectedFile);
+    const formData = new FormData();
+    formData.append('query', inputValue.trim());
+    formData.append('file', selectedFile);
 
-  try {
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
-    const res = await fetch(`${apiUrl}/api/ask-with-file`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await res.json();
+    try {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const res = await fetch(`${apiUrl}/api/ask-with-file`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
 
-    if (data.answer) {
-      // User-Frage hinzufügen
-      onSendMessage(
-        inputValue.trim(),
-        {
-          name: selectedFile.name,
-          size: selectedFile.size,
-          type: selectedFile.type,
-          url: URL.createObjectURL(selectedFile),
-        },
-        undefined,
-        true   // User
-      );
-
-      // Bot-Antwort hinzufügen
-      onSendMessage(
-        data.answer,
-        undefined,
-        undefined,
-        false  // Bot
-      );
-    } else {
-      alert('Keine Antwort erhalten.');
+      if (data.answer) {
+        // User-Frage als eigene Nachricht anzeigen, aber mit Spezial-Flag, damit App.tsx KEINE LLM-Antwort triggert
+        onSendMessage(
+          inputValue.trim(),
+          {
+            name: selectedFile.name,
+            size: selectedFile.size,
+            type: selectedFile.type,
+            url: URL.createObjectURL(selectedFile),
+          },
+          undefined,
+          true // User
+        );
+        // Bot-Antwort anzeigen
+        onSendMessage(
+          data.answer,
+          undefined,
+          undefined,
+          false // Bot
+        );
+      } else {
+        alert('Keine Antwort erhalten.');
+      }
+    } catch (err) {
+      alert('Fehler bei der Anfrage mit Datei.');
+    } finally {
+      setUploading(false);
+      setAskWithFileMode(false);
+      setSelectedFile(null);
+      setInputValue('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  } catch (err) {
-    alert('Fehler bei der Anfrage mit Datei.');
-  } finally {
-    setUploading(false);
-    setAskWithFileMode(false);
-    setSelectedFile(null);
-    setInputValue('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
-};
-
-
+  };
 
   const handlePlusClick = () => {
     fileInputRef.current?.click();
