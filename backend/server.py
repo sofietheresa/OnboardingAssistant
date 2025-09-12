@@ -153,9 +153,11 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
         tmp_path = Path(tmp.name)  # Ensure tmp_path is a Path object
 
     # Dokument laden und in Chunks splitten
+    print(f"[DEBUG] ask-with-file: tmp_path={tmp_path}, suffix={tmp_path.suffix}, exists={tmp_path.exists()}")
     docs = list(load_documents([tmp_path]))
+    print(f"[DEBUG] ask-with-file: docs loaded: {len(docs)}")
     if not docs:
-        raise HTTPException(status_code=400, detail="Datei konnte nicht verarbeitet werden.")
+        raise HTTPException(status_code=400, detail=f"Datei konnte nicht verarbeitet werden. Unterstützte Dateitypen: .pdf, .docx, .md, .markdown. Übergeben: {tmp_path.name}")
     chunks = split_into_chunks(docs[0]["text"])
     records = to_records("temp_doc", chunks, docs[0]["metadata"])
 
