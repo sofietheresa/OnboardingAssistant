@@ -276,20 +276,33 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       });
       const data = await res.json();
       if (data.answer) {
-        // User-Frage als eigene Nachricht anzeigen
-        onSendMessage(inputValue.trim(), {
-          name: selectedFile.name,
-          size: selectedFile.size,
-          type: selectedFile.type,
-          url: URL.createObjectURL(selectedFile),
-        });
-        // Bot-Antwort als Assistant-Message mit Quellen anzeigen
-        window.setTimeout(() => {
-          onSendMessage(data.answer, undefined, undefined, false, data.sources);
-        }, 0);
+        // User-Frage als eigene Nachricht manuell hinzufügen (ohne Backend-Request)
+        setMessages(prev => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            text: inputValue.trim(),
+            isUser: true,
+            timestamp: new Date(),
+            fileAttachment: {
+              name: selectedFile.name,
+              size: selectedFile.size,
+              type: selectedFile.type,
+              url: URL.createObjectURL(selectedFile),
+            }
+          },
+          {
+            id: crypto.randomUUID(),
+            text: data.answer,
+            isUser: false,
+            timestamp: new Date(),
+            sources: data.sources || []
+          }
+        ]);
       } else {
         alert('Keine Antwort erhalten.');
       }
+
     } catch (err) {
       alert('Fehler bei der Anfrage mit Datei.');
     } finally {
