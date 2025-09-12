@@ -235,7 +235,8 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
         "ANTWORTFORMAT:\n- knappe Antwort in Deutsch\n- bei Prozessen: nummerierte Schritte\n- Abschlusszeile: 'Quellen: <Datei>'\n"
     )
     # LLM aufrufen
-    from app.llm import WatsonxAILLM, SYSTEM_PROMPT
+    from app.rag import SYSTEM_PROMPT
+    from app.llm import WatsonxAILLM
     llm = WatsonxAILLM()
     output = await llm.generate(SYSTEM_PROMPT, prompt)
     return {"answer": output, "sources": sources}
