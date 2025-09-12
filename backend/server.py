@@ -145,7 +145,6 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
     import tempfile
     from ingest.loaders import load_documents
     from ingest.chunker import split_into_chunks, to_records
-    from app.rag import answer as rag_answer
 
     # Datei temporär speichern
     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
@@ -162,27 +161,71 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
     records = to_records("temp_doc", chunks, docs[0]["metadata"])
 
     # Kontext für diese Anfrage zusammenbauen
+    # 1. Hole relevante Chunks aus der Vektordatenbank (wie im normalen RAG)
+    from app.rag import retrieve
+    db_contexts = await retrieve(query, k=6)  # Liste von Dicts mit 'content', 'metadata', ...
+    db_chunks = [c['content'] for c in db_contexts]
+    db_sources = [
+        {
+            "title": c["metadata"].get("filename") or c["doc_id"],
+            "doc_id": c["doc_id"],
+            "chunk_id": c["chunk_id"],
+        }
+        for c in db_contexts
+    ]
+
+    # 2. Chunks aus dem hochgeladenen Dokument
     context_texts = [r["content"] for r in records]
 
     # --- ECHTE TOKENZÄHLUNG (OpenAI-like) ---
     def count_tokens(text):
-        # Einfache Heuristik: whitespace split (besser: tiktoken, transformers, o.ä.)
         return len(text.split())
 
     max_tokens = 510  # IBM Granite: 512, etwas Reserve für Prompt
     context = ""
     token_count = 0
-    for chunk in context_texts:
-        chunk_tokens = count_tokens(chunk)
-        if token_count + chunk_tokens > max_tokens:
-          
-            allowed = max_tokens - token_count
-            words = chunk.split()
-            context += " " + " ".join(words[:allowed])
-            break
-        else:
-            context += "\n\n" + chunk
-            token_count += chunk_tokens
+    sources = []
+
+    # Füge abwechselnd DB-Kontext und Datei-Kontext hinzu, bis das Token-Limit erreicht ist
+    db_i, file_i = 0, 0
+    while token_count < max_tokens and (db_i < len(db_chunks) or file_i < len(context_texts)):
+        # Abwechselnd: erst DB, dann Datei, dann wieder DB, ...
+        if db_i < len(db_chunks):
+            chunk = db_chunks[db_i]
+            chunk_tokens = count_tokens(chunk)
+            if token_count + chunk_tokens > max_tokens:
+                allowed = max_tokens - token_count
+                words = chunk.split()
+                context += " " + " ".join(words[:allowed])
+                sources.append(db_sources[db_i])
+                break
+            else:
+                context += "\n\n" + chunk
+                token_count += chunk_tokens
+                sources.append(db_sources[db_i])
+            db_i += 1
+        if file_i < len(context_texts) and token_count < max_tokens:
+            chunk = context_texts[file_i]
+            chunk_tokens = count_tokens(chunk)
+            if token_count + chunk_tokens > max_tokens:
+                allowed = max_tokens - token_count
+                words = chunk.split()
+                context += " " + " ".join(words[:allowed])
+                sources.append({
+                    "title": Path(file.filename).name,
+                    "doc_id": "temp_doc",
+                    "chunk_id": file_i,
+                })
+                break
+            else:
+                context += "\n\n" + chunk
+                token_count += chunk_tokens
+                sources.append({
+                    "title": Path(file.filename).name,
+                    "doc_id": "temp_doc",
+                    "chunk_id": file_i,
+                })
+            file_i += 1
 
     context = context.strip()
     # Prompt bauen wie in rag.py
@@ -192,8 +235,10 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
         "ANTWORTFORMAT:\n- knappe Antwort in Deutsch\n- bei Prozessen: nummerierte Schritte\n- Abschlusszeile: 'Quellen: <Datei>'\n"
     )
     # LLM aufrufen
-    result = await rag_answer(prompt)
-    return result
+    from app.llm import WatsonxAILLM, SYSTEM_PROMPT
+    llm = WatsonxAILLM()
+    output = await llm.generate(SYSTEM_PROMPT, prompt)
+    return {"answer": output, "sources": sources}
 
 
 @app.post("/api/ingest-uploaded-file")
