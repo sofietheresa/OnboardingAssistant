@@ -279,29 +279,26 @@ const handleAskWithFile = async (e: React.FormEvent) => {
     const data = await res.json();
 
     if (data.answer) {
-      // User-Frage direkt ins Messages-Array schreiben
-      setMessages(prev => [
-        ...prev,
+      // User-Frage hinzufügen
+      onSendMessage(
+        inputValue.trim(),
         {
-          id: crypto.randomUUID(),
-          text: inputValue.trim(),
-          isUser: true,
-          timestamp: new Date(),
-          fileAttachment: {
-            name: selectedFile.name,
-            size: selectedFile.size,
-            type: selectedFile.type,
-            url: URL.createObjectURL(selectedFile),
-          }
+          name: selectedFile.name,
+          size: selectedFile.size,
+          type: selectedFile.type,
+          url: URL.createObjectURL(selectedFile),
         },
-        {
-          id: crypto.randomUUID(),
-          text: data.answer,
-          isUser: false,
-          timestamp: new Date(),
-          sources: data.sources || []
-        }
-      ]);
+        undefined,
+        true   // User
+      );
+
+      // Bot-Antwort hinzufügen
+      onSendMessage(
+        data.answer,
+        undefined,
+        undefined,
+        false  // Bot
+      );
     } else {
       alert('Keine Antwort erhalten.');
     }
@@ -315,6 +312,7 @@ const handleAskWithFile = async (e: React.FormEvent) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 };
+
 
 
   const handlePlusClick = () => {
