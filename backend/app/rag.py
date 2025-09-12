@@ -49,7 +49,18 @@ async def retrieve(query: str, k: int = 6) -> List[Dict]:
 
 async def answer(question: str) -> Dict:
     contexts = await retrieve(question, k=6)
-    prompt = format_prompt(question, contexts)
+
+    if contexts:  # normaler RAG-Flow
+        prompt = format_prompt(question, contexts)
+    else:  # kein Kontext gefunden → fallback
+        prompt = (
+            f"FRAGE:\n{question}\n\n"
+            "Es konnte kein relevanter Kontext gefunden werden. "
+            "Antworte bitte trotzdem kurz, korrekt, auf Deutsch, "
+            "auf Basis deines eigenen Wissens. "
+            "Wenn du unsicher bist, sage dies klar und schlage einen Eskalationsweg vor.\n\n"
+            "ANTWORT:\n"
+        )
 
     llm = WatsonxAILLM()
     output = await llm.generate(SYSTEM_PROMPT, prompt)
