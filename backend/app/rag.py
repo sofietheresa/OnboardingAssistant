@@ -29,22 +29,21 @@ def format_prompt(question: str, contexts: List[Dict]) -> str:
     )
 
 async def retrieve(query: str, k: int = 6) -> List[Dict]:
-    """
-    1) Embedding der Frage
-    2) Ähnlichkeitssuche in Postgres/pgvector
-    """
     embedder = WatsonxAIEmbeddings()
     q_vec = (await embedder.embed([query]))[0]
+
+    # als pgvector-kompatiblen String formatieren
+    q_vec_str = "[" + ",".join(str(x) for x in q_vec) + "]"
 
     sql = """
     SELECT id, doc_id, chunk_id, content, metadata
     FROM documents
-    ORDER BY embedding <=> %s
+    ORDER BY embedding <=> %s::vector
     LIMIT %s
     """
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, (q_vec, k))
+            cur.execute(sql, (q_vec_str, k))
             rows = cur.fetchall()
             return rows
 
