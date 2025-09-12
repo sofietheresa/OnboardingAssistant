@@ -148,7 +148,7 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
     from app.rag import answer as rag_answer
 
     # Datei temporär speichern
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
         shutil.copyfileobj(file.file, tmp)
         tmp_path = Path(tmp.name)  # Ensure tmp_path is a Path object
 
