@@ -47,7 +47,8 @@ const handleSendMessage = (
   text: string,
   fileAttachment?: FileAttachment,
   audioAttachment?: AudioAttachment,
-  isUser: boolean = true   // Default: User
+  isUser: boolean = true,
+  skipBackend: boolean = false
 ) => {
   const newMessage: Message = {
     id: crypto.randomUUID(),
@@ -60,8 +61,8 @@ const handleSendMessage = (
 
   setMessages((prev) => [...prev, newMessage]);
 
-  // Nur wenn User, dann Backend aufrufen
-  if (isUser) {
+  // 🚫 Nur wenn User UND kein skipBackend → Backend call
+  if (isUser && !skipBackend) {
     setIsLoading(true);
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
     fetch(`${apiBaseUrl}/v1/ask`, {
@@ -98,6 +99,7 @@ const handleSendMessage = (
       });
   }
 };
+
 
 
   // Render onboarding when no location selected

@@ -39,7 +39,8 @@ export interface ChatScreenProps {
     text: string,
     fileAttachment?: FileAttachment,
     audioAttachment?: AudioAttachment,
-    isUser?: boolean
+    isUser?: boolean,
+    skipBackend?: boolean
   ) => void;
   onBackToOnboarding: () => void;
   isLoading: boolean;
