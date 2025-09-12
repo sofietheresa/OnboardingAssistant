@@ -284,7 +284,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
           url: URL.createObjectURL(selectedFile),
         });
         // Bot-Antwort als Assistant-Message mit Quellen anzeigen
-        onSendMessage(data.answer, undefined, undefined, false, data.sources);
+        window.setTimeout(() => {
+          onSendMessage(data.answer, undefined, undefined, false, data.sources);
+        }, 0);
       } else {
         alert('Keine Antwort erhalten.');
       }

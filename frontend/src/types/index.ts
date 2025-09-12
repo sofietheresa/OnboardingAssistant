@@ -35,7 +35,13 @@ export interface AudioAttachment {
 export interface ChatScreenProps {
   location: Location;
   messages: Message[];
-  onSendMessage: (text: string, fileAttachment?: FileAttachment, audioAttachment?: AudioAttachment) => void;
+  onSendMessage: (
+    text: string,
+    fileAttachment?: FileAttachment,
+    audioAttachment?: AudioAttachment,
+    isUser?: boolean,
+    sources?: Source[]
+  ) => void;
   onBackToOnboarding: () => void;
   isLoading: boolean;
 }
