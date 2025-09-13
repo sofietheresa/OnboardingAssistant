@@ -24,10 +24,6 @@ def format_prompt(question: str, contexts: List[Dict]) -> str:
     return (
         f"FRAGE:\n{question}\n\n"
         f"KONTEXT (verwende NUR Folgendes):\n{ctx}\n\n"
-        "ANTWORTFORMAT:\n"
-        "- knappe Antwort in Deutsch\n"
-        "- bei Prozessen: nummerierte Schritte\n"
-        "- Abschlusszeile: 'Quellen: <Titel#Chunk, ...>'\n"
     )
 
 async def retrieve(query: str, k: int = 6) -> List[Dict]:
