@@ -279,7 +279,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
       const data = await res.json();
 
       if (data.answer) {
-        // User-Frage als eigene Nachricht anzeigen, aber mit Spezial-Flag, damit App.tsx KEINE LLM-Antwort triggert
+        // User-Frage als eigene Nachricht anzeigen, aber skipBackend=true, damit App.tsx keine LLM-Antwort triggert
         onSendMessage(
           inputValue.trim(),
           {
@@ -289,7 +289,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({
             url: URL.createObjectURL(selectedFile),
           },
           undefined,
-          true // User
+          true, // User
+          true  // skipBackend
         );
         // Bot-Antwort anzeigen
         onSendMessage(
