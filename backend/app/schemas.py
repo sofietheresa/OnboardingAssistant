@@ -4,6 +4,7 @@ from typing import List, Optional
 class AskRequest(BaseModel):
     query: str
     user: Optional[dict] = None  # für spätere Personalisierung
+    history: Optional[list[dict]] = None  # Chatverlauf für Kontext
 
 class Source(BaseModel):
     title: str

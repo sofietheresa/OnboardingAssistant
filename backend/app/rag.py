@@ -45,7 +45,7 @@ async def retrieve(query: str, k: int = 6) -> List[Dict]:
             rows = cur.fetchall()
             return rows
 
-async def answer(question: str, extra_contexts: Optional[List[Dict]] = None) -> Dict:
+async def answer(question: str, extra_contexts: Optional[List[Dict]] = None, chat_history: Optional[List[Dict]] = None) -> Dict:
     # Wenn extra_contexts (z.B. aus Datei) übergeben werden, diese mit DB-Kontexten kombinieren
     db_contexts = await retrieve(question, k=6)
     contexts = db_contexts.copy()
@@ -54,10 +54,21 @@ async def answer(question: str, extra_contexts: Optional[List[Dict]] = None) -> 
         contexts += extra_contexts
         contexts = contexts[:8]
 
+    # Chatverlauf in den Prompt einbauen
+    history_prompt = ""
+    if chat_history:
+        for turn in chat_history:
+            role = turn.get("role", "user")
+            content = turn.get("content", "")
+            if role == "user":
+                history_prompt += f"Nutzer: {content}\n"
+            else:
+                history_prompt += f"Assistent: {content}\n"
+
     if contexts:  # normaler RAG-Flow oder mit Datei-Kontext
-        prompt = format_prompt(question, contexts)
+        prompt = history_prompt + format_prompt(question, contexts)
     else:  # kein Kontext gefunden → fallback
-        prompt = (
+        prompt = history_prompt + (
             f"FRAGE:\n{question}\n\n"
             "Es konnte kein relevanter Kontext gefunden werden. "
             "Antworte bitte trotzdem kurz, korrekt, auf Deutsch, "

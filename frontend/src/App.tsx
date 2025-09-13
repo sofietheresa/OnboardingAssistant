@@ -59,20 +59,25 @@ const handleSendMessage = (
     audioAttachment
   };
 
-  setMessages((prev) => [...prev, newMessage]);
+  setMessages((prev: Message[]) => [...prev, newMessage]);
 
   // 🚫 Nur wenn User UND kein skipBackend → Backend call
   if (isUser && !skipBackend) {
     setIsLoading(true);
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://boardy-app.1zt0zkzab8pz.eu-de.codeengine.appdomain.cloud';
+    // Chatverlauf für den Backend-Call vorbereiten (ohne file/audio)
+    const history = (messages as Message[]).map((m: Message) => ({
+      role: m.isUser ? "user" : "assistant",
+      content: m.text
+    }));
     fetch(`${apiBaseUrl}/v1/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: text })
+      body: JSON.stringify({ query: text, history })
     })
       .then((r) => r.json())
       .then((data) => {
-        setMessages((prev) => [
+        setMessages((prev: Message[]) => [
           ...prev,
           {
             id: crypto.randomUUID(),
@@ -84,7 +89,7 @@ const handleSendMessage = (
         ]);
       })
       .catch(() => {
-        setMessages((prev) => [
+        setMessages((prev: Message[]) => [
           ...prev,
           {
             id: crypto.randomUUID(),

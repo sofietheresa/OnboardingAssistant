@@ -75,7 +75,8 @@ async def list_locations():
 # ---- Chat über RAG (neuer Endpoint) ----
 @app.post("/v1/ask", response_model=AskResponse)
 async def ask_rag(req: AskRequest):
-    result = await rag_answer(req.query)
+    # Übergebe den Chatverlauf (history) an rag_answer, falls vorhanden
+    result = await rag_answer(req.query, chat_history=req.history)
     return AskResponse(**result)
 
 
