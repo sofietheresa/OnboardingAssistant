@@ -149,98 +149,21 @@ async def ask_with_file(query: str = Form(...), file: UploadFile = File(...)):
     # Datei temporär speichern
     with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
         shutil.copyfileobj(file.file, tmp)
-        tmp_path = Path(tmp.name)  # Ensure tmp_path is a Path object
+        tmp_path = Path(tmp.name)
 
     # Dokument laden und in Chunks splitten
-    print(f"[DEBUG] ask-with-file: tmp_path={tmp_path}, suffix={tmp_path.suffix}, exists={tmp_path.exists()}")
     docs = list(load_documents([tmp_path]))
-    print(f"[DEBUG] ask-with-file: docs loaded: {len(docs)}")
     if not docs:
         raise HTTPException(status_code=400, detail=f"Datei konnte nicht verarbeitet werden. Unterstützte Dateitypen: .pdf, .docx, .md, .markdown. Übergeben: {tmp_path.name}")
     chunks = split_into_chunks(docs[0]["text"])
     records = to_records("temp_doc", chunks, docs[0]["metadata"])
 
     # Kontext für diese Anfrage zusammenbauen
-    # 1. Hole relevante Chunks aus der Vektordatenbank (wie im normalen RAG)
-    from app.rag import retrieve
-    db_contexts = await retrieve(query, k=6)  # Liste von Dicts mit 'content', 'metadata', ...
-    db_chunks = [c['content'] for c in db_contexts]
-    db_sources = [
-        {
-            "title": c["metadata"].get("filename") or c["doc_id"],
-            "doc_id": c["doc_id"],
-            "chunk_id": c["chunk_id"],
-        }
-        for c in db_contexts
-    ]
+    from app.rag import answer as rag_answer
 
-    # 2. Chunks aus dem hochgeladenen Dokument
-    context_texts = [r["content"] for r in records]
-
-    # --- ECHTE TOKENZÄHLUNG (OpenAI-like) ---
-    def count_tokens(text):
-        return len(text.split())
-
-    max_tokens = 510  # IBM Granite: 512, etwas Reserve für Prompt
-    context = ""
-    token_count = 0
-    sources = []
-
-    # Füge abwechselnd DB-Kontext und Datei-Kontext hinzu, bis das Token-Limit erreicht ist
-    db_i, file_i = 0, 0
-    while token_count < max_tokens and (db_i < len(db_chunks) or file_i < len(context_texts)):
-        # Abwechselnd: erst DB, dann Datei, dann wieder DB, ...
-        if db_i < len(db_chunks):
-            chunk = db_chunks[db_i]
-            chunk_tokens = count_tokens(chunk)
-            if token_count + chunk_tokens > max_tokens:
-                allowed = max_tokens - token_count
-                words = chunk.split()
-                context += " " + " ".join(words[:allowed])
-                sources.append(db_sources[db_i])
-                break
-            else:
-                context += "\n\n" + chunk
-                token_count += chunk_tokens
-                sources.append(db_sources[db_i])
-            db_i += 1
-        if file_i < len(context_texts) and token_count < max_tokens:
-            chunk = context_texts[file_i]
-            chunk_tokens = count_tokens(chunk)
-            if token_count + chunk_tokens > max_tokens:
-                allowed = max_tokens - token_count
-                words = chunk.split()
-                context += " " + " ".join(words[:allowed])
-                sources.append({
-                    "title": Path(file.filename).name,
-                    "doc_id": "temp_doc",
-                    "chunk_id": file_i,
-                })
-                break
-            else:
-                context += "\n\n" + chunk
-                token_count += chunk_tokens
-                sources.append({
-                    "title": Path(file.filename).name,
-                    "doc_id": "temp_doc",
-                    "chunk_id": file_i,
-                })
-            file_i += 1
-
-    context = context.strip()
-    # Prompt bauen wie in rag.py
-    prompt = (
-        f"FRAGE:\n{query}\n\n"
-        f"KONTEXT (verwende NUR Folgendes):\n{context}\n\n"
-        "ANTWORTFORMAT:\n- knappe Antwort in Deutsch\n- bei Prozessen: nummerierte Schritte\n- Abschlusszeile: 'Quellen: <Datei>'\n"
-    )
-    # LLM aufrufen
-    from app.rag import SYSTEM_PROMPT
-    from app.llm import WatsonxAILLM
-    llm = WatsonxAILLM()
-    output = await llm.generate(SYSTEM_PROMPT, prompt)
-    return {"answer": output, "sources": sources}
-
+    # Übergebe die temporären Kontexte an die RAG-Logik
+    result = await rag_answer(query, extra_contexts=records)
+    return result
 
 @app.post("/api/ingest-uploaded-file")
 async def ingest_uploaded_file(filename: str = Form(...)):
@@ -273,7 +196,7 @@ async def serve_frontend():
 @app.get("/{path:path}")
 async def serve_static(path: str):
     file_path = frontend_path / path
-    if file_path.exists() and file_path.is_file():
+    if (file_path.exists() and file_path.is_file()):
         return FileResponse(str(file_path))
     index_file = frontend_path / "index.html"
     if index_file.exists():

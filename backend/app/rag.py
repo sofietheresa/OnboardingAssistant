@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from .embeddings import WatsonxAIEmbeddings
 from .llm import WatsonxAILLM
 from .db import get_conn
@@ -23,7 +23,7 @@ def format_prompt(question: str, contexts: List[Dict]) -> str:
 
     return (
         f"FRAGE:\n{question}\n\n"
-        f"KONTEXT (verwende NUR Folgendes):\n{ctx}\n\n"
+        f"KONTEXT (verwende bevorzugt Folgendes, du darfst aber auch eigenes Wissen nutzen, wenn du dir sicher bist):\n{ctx}\n\n"
     )
 
 async def retrieve(query: str, k: int = 6) -> List[Dict]:
@@ -45,10 +45,16 @@ async def retrieve(query: str, k: int = 6) -> List[Dict]:
             rows = cur.fetchall()
             return rows
 
-async def answer(question: str) -> Dict:
-    contexts = await retrieve(question, k=6)
+async def answer(question: str, extra_contexts: Optional[List[Dict]] = None) -> Dict:
+    # Wenn extra_contexts (z.B. aus Datei) übergeben werden, diese mit DB-Kontexten kombinieren
+    db_contexts = await retrieve(question, k=6)
+    contexts = db_contexts.copy()
+    if extra_contexts:
+        # Füge die extra Kontexte (z.B. aus Datei) hinten an, max 8 insgesamt
+        contexts += extra_contexts
+        contexts = contexts[:8]
 
-    if contexts:  # normaler RAG-Flow
+    if contexts:  # normaler RAG-Flow oder mit Datei-Kontext
         prompt = format_prompt(question, contexts)
     else:  # kein Kontext gefunden → fallback
         prompt = (
@@ -57,7 +63,6 @@ async def answer(question: str) -> Dict:
             "Antworte bitte trotzdem kurz, korrekt, auf Deutsch, "
             "auf Basis deines eigenen Wissens. "
             "Wenn du unsicher bist, sage dies klar und schlage einen Eskalationsweg vor.\n\n"
-            "ANTWORT:\n"
         )
 
     llm = WatsonxAILLM()
